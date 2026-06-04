@@ -1,9 +1,16 @@
+"use client";
+
 import PageShell from "@/components/layout/PageShell";
 import ImageUploader from "@/components/analyzer/ImageUploader";
 import ResultCard from "@/components/analyzer/ResultCard";
 import LogLogChart from "@/components/charts/LogLogChart";
+import PipelineViewer from "@/components/analyzer/PipelineViewer";
+import BoxSizeSlider from "@/components/analyzer/BoxSizeSlider";
+import { useAnalyzerStore } from "@/store/analyzerStore";
 
 export default function LabPage() {
+  const { result, binaryImageUrl, selectedBoxSize } = useAnalyzerStore();
+
   return (
     <PageShell>
       <div className="max-w-5xl mx-auto space-y-10">
@@ -17,10 +24,19 @@ export default function LabPage() {
         
         <ImageUploader />
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <ResultCard />
-          <LogLogChart />
-        </div>
+        {result && binaryImageUrl && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-8">
+              <PipelineViewer binaryImageB64={binaryImageUrl} selectedBoxSize={selectedBoxSize} />
+              <BoxSizeSlider />
+            </div>
+            
+            <div className="space-y-8">
+              <ResultCard />
+              <LogLogChart />
+            </div>
+          </div>
+        )}
       </div>
     </PageShell>
   );

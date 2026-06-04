@@ -5,7 +5,7 @@ import { useAnalyzerStore } from "@/store/analyzerStore";
 import { analyzeImage } from "@/lib/api/client";
 
 export default function ImageUploader() {
-  const { setFile, setResult, setIsAnalyzing, isAnalyzing } = useAnalyzerStore();
+  const { setFile, setResult, setIsAnalyzing, isAnalyzing, setBinaryImageUrl } = useAnalyzerStore();
   const [isDragActive, setIsDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -16,6 +16,9 @@ export default function ImageUploader() {
     try {
       const res = await analyzeImage(file, { analysisMode: "full-mask", thresholdMethod: "otsu" });
       setResult(res.result);
+      if (res.binary_image_b64) {
+        setBinaryImageUrl(`data:image/png;base64,${res.binary_image_b64}`);
+      }
     } catch (err) {
       console.error(err);
       alert("Failed to analyze image");

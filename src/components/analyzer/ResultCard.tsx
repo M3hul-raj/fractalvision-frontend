@@ -14,13 +14,13 @@ export default function ResultCard() {
         <div>
           <span className="block text-sm text-gray-400 uppercase tracking-wider mb-1">Fractal Dimension</span>
           <span className="text-4xl font-mono font-bold text-blue-400 drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]">
-            {result.fractalDimension.toFixed(4)}
+            {result.fractal_dimension.toFixed(4)}
           </span>
         </div>
         <div>
           <span className="block text-sm text-gray-400 uppercase tracking-wider mb-1">R² Score</span>
           <span className="text-4xl font-mono font-bold text-green-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]">
-            {result.rSquared.toFixed(4)}
+            {result.r_squared.toFixed(4)}
           </span>
         </div>
       </div>

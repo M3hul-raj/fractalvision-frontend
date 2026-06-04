@@ -5,13 +5,13 @@ import * as d3 from "d3";
 import { useAnalyzerStore } from "@/store/analyzerStore";
 
 export default function LogLogChart() {
-  const { result } = useAnalyzerStore();
+  const { result, selectedBoxSize } = useAnalyzerStore();
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
     if (!result || !svgRef.current) return;
 
-    const { logInverseSizes, logCounts, fittedValues } = result;
+    const { log_inverse_sizes, log_counts, fitted_values, box_sizes } = result;
 
     const width = 500;
     const height = 300;
@@ -29,13 +29,13 @@ export default function LogLogChart() {
 
     const x = d3
       .scaleLinear()
-      .domain([d3.min(logInverseSizes) as number, d3.max(logInverseSizes) as number])
+      .domain([d3.min(log_inverse_sizes) as number, d3.max(log_inverse_sizes) as number])
       .nice()
       .range([0, innerWidth]);
 
     const y = d3
       .scaleLinear()
-      .domain([d3.min(logCounts) as number, d3.max(logCounts) as number])
+      .domain([d3.min(log_counts) as number, d3.max(log_counts) as number])
       .nice()
       .range([innerHeight, 0]);
 
@@ -67,9 +67,9 @@ export default function LogLogChart() {
       .x((d) => x(d.x))
       .y((d) => y(d.y));
 
-    const lineData = logInverseSizes.map((xVal, i) => ({
+    const lineData = log_inverse_sizes.map((xVal, i) => ({
       x: xVal,
-      y: fittedValues[i],
+      y: fitted_values[i],
     }));
 
     g.append("path")
@@ -81,15 +81,18 @@ export default function LogLogChart() {
 
     // Scatter Points
     g.selectAll("circle")
-      .data(logInverseSizes.map((xVal, i) => ({ x: xVal, y: logCounts[i] })))
+      .data(log_inverse_sizes.map((xVal, i) => ({ x: xVal, y: log_counts[i], boxSize: box_sizes[i] })))
       .enter()
       .append("circle")
       .attr("cx", (d) => x(d.x))
       .attr("cy", (d) => y(d.y))
-      .attr("r", 4)
-      .attr("fill", "#ef4444"); // red-500
+      .attr("r", (d) => d.boxSize === selectedBoxSize ? 8 : 4)
+      .attr("fill", (d) => d.boxSize === selectedBoxSize ? "#60a5fa" : "#ef4444")
+      .attr("stroke", (d) => d.boxSize === selectedBoxSize ? "#fff" : "none")
+      .attr("stroke-width", (d) => d.boxSize === selectedBoxSize ? 2 : 0)
+      .style("transition", "all 0.2s ease-in-out");
 
-  }, [result]);
+  }, [result, selectedBoxSize]);
 
   if (!result) return null;
 

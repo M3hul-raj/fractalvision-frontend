@@ -5,7 +5,6 @@
 import { create } from "zustand";
 import type { AnalysisResult, ProcessingState } from "@/types/analysis";
 
-/** Shape of the analyzer store. */
 export interface AnalyzerStore {
   // --- State ---
   originalFile: File | null;
@@ -14,12 +13,15 @@ export interface AnalyzerStore {
   result: AnalysisResult | null;
   processing: ProcessingState;
   isAnalyzing: boolean;
+  selectedBoxSize: number | null;
 
   // --- Actions ---
   setFile: (file: File) => void;
   setResult: (result: AnalysisResult) => void;
   setProcessing: (updates: Partial<ProcessingState>) => void;
   setIsAnalyzing: (value: boolean) => void;
+  setSelectedBoxSize: (size: number | null) => void;
+  setBinaryImageUrl: (url: string | null) => void;
   reset: () => void;
 }
 
@@ -45,6 +47,7 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
   result: null,
   processing: { ...initialProcessing },
   isAnalyzing: false,
+  selectedBoxSize: null,
 
   // --- Actions ---
   setFile: (file: File) => {
@@ -54,11 +57,16 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
       originalImageUrl: url,
       binaryImageUrl: null,
       result: null,
+      selectedBoxSize: null,
     });
   },
 
   setResult: (result: AnalysisResult) => {
-    set({ result, isAnalyzing: false });
+    set({ 
+      result, 
+      isAnalyzing: false,
+      selectedBoxSize: result.box_sizes && result.box_sizes.length > 0 ? result.box_sizes[0] : null
+    });
   },
 
   setProcessing: (updates: Partial<ProcessingState>) => {
@@ -71,6 +79,14 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
     set({ isAnalyzing: value });
   },
 
+  setSelectedBoxSize: (size: number | null) => {
+    set({ selectedBoxSize: size });
+  },
+
+  setBinaryImageUrl: (url: string | null) => {
+    set({ binaryImageUrl: url });
+  },
+
   reset: () => {
     set({
       originalFile: null,
@@ -79,6 +95,7 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
       result: null,
       processing: { ...initialProcessing },
       isAnalyzing: false,
+      selectedBoxSize: null,
     });
   },
 }));

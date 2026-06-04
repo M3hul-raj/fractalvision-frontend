@@ -4,22 +4,22 @@
 
 /** Result of a fractal dimension analysis. */
 export type AnalysisResult = {
-  fractalDimension: number;
-  rSquared: number;
+  fractal_dimension: number;
+  r_squared: number;
   intercept: number;
-  standardError: number;
-  confidenceInterval: [number, number];
-  boxSizes: number[];
-  boxCounts: number[];
-  logInverseSizes: number[];
-  logCounts: number[];
-  fittedValues: number[];
+  standard_error: number;
+  confidence_interval: [number, number];
+  box_sizes: number[];
+  box_counts: number[];
+  log_inverse_sizes: number[];
+  log_counts: number[];
+  fitted_values: number[];
   residuals: number[];
-  foregroundRatio: number;
-  qualityScore: number;
+  foreground_ratio: number;
+  quality_score: number;
   reliability: "High" | "Medium" | "Low";
   interpretation: string;
-  complexityClass: string;
+  complexity_class: string;
   warnings: string[];
 };
 

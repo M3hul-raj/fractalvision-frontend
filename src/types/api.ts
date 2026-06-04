@@ -6,15 +6,15 @@ import type { AnalysisResult, SensitivityReport } from "./analysis";
 
 /** Parameters echoed back in analysis response. */
 export type AnalysisParameters = {
-  analysisMode: string;
-  thresholdMethod: string;
-  computedThreshold?: number;
+  analysis_mode: string;
+  threshold_method: string;
+  computed_threshold?: number;
   invert: boolean;
   denoise: boolean;
-  blurLevel: number;
-  boxSizesUsed: number[];
-  imageWidth: number;
-  imageHeight: number;
+  blur_level: number;
+  box_sizes_used: number[];
+  image_width: number;
+  image_height: number;
 };
 
 /** Response from POST /api/v1/analyze. */
@@ -22,7 +22,8 @@ export type AnalyzeApiResponse = {
   parameters: AnalysisParameters;
   result: AnalysisResult;
   sensitivity?: SensitivityReport;
-  processingTimeMs: number;
+  processing_time_ms: number;
+  binary_image_b64: string;
 };
 
 /** A single item in a batch analysis response. */
