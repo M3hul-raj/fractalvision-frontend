@@ -6,7 +6,6 @@ import type { AnalyzeApiResponse, BatchAnalyzeApiResponse, GenerateFractalApiRes
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
-/** Analyze a single image server-side. */
 export async function analyzeImage(
   file: File,
   options?: {
@@ -21,8 +20,31 @@ export async function analyzeImage(
     runSensitivity?: boolean;
   }
 ): Promise<AnalyzeApiResponse> {
-  // TODO: Phase 1 — build FormData and POST to /analyze
-  throw new Error("Not implemented");
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  if (options) {
+    if (options.analysisMode) formData.append("analysis_mode", options.analysisMode);
+    if (options.thresholdMethod) formData.append("threshold_method", options.thresholdMethod);
+    if (options.manualThreshold !== undefined) formData.append("manual_threshold", options.manualThreshold.toString());
+    if (options.invert !== undefined) formData.append("invert", options.invert.toString());
+    if (options.denoise !== undefined) formData.append("denoise", options.denoise.toString());
+    if (options.blurLevel !== undefined) formData.append("blur_level", options.blurLevel.toString());
+    if (options.boxSizes) formData.append("box_sizes", options.boxSizes);
+    if (options.gridOffsets) formData.append("grid_offsets", options.gridOffsets);
+    if (options.runSensitivity !== undefined) formData.append("run_sensitivity", options.runSensitivity.toString());
+  }
+
+  const res = await fetch(`${API_URL}/analyze`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Analyze failed: ${res.status} - ${errText}`);
+  }
+  return res.json();
 }
 
 /** Batch-analyze multiple images server-side. */
