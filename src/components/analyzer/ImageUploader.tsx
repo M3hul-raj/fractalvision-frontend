@@ -5,7 +5,7 @@ import { useAnalyzerStore } from "@/store/analyzerStore";
 import { analyzeImage } from "@/lib/api/client";
 
 export default function ImageUploader() {
-  const { setFile, setResult, setIsAnalyzing, isAnalyzing, setBinaryImageUrl } = useAnalyzerStore();
+  const { setFile, setResult, setIsAnalyzing, isAnalyzing, setBinaryImageUrl, setLastResponse, analysisMode, thresholdMethod, thresholdValue, error, setError } = useAnalyzerStore();
   const [isDragActive, setIsDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -14,14 +14,19 @@ export default function ImageUploader() {
     setFile(file);
     setIsAnalyzing(true);
     try {
-      const res = await analyzeImage(file, { analysisMode: "full-mask", thresholdMethod: "otsu" });
+      const res = await analyzeImage(file, { 
+        analysisMode, 
+        thresholdMethod, 
+        thresholdValue 
+      });
       setResult(res.result);
+      setLastResponse(res);
       if (res.binary_image_b64) {
         setBinaryImageUrl(`data:image/png;base64,${res.binary_image_b64}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Failed to analyze image");
+      setError(err.message || "Failed to analyze image");
     } finally {
       setIsAnalyzing(false);
     }
@@ -79,6 +84,11 @@ export default function ImageUploader() {
         </p>
       )}
       <p className="text-sm text-gray-500 mt-2">Supports JPG, PNG, WEBP</p>
+      {error && (
+        <div className="mt-4 p-3 bg-red-900/50 border border-red-500 rounded text-red-200 text-sm" onClick={(e) => e.stopPropagation()}>
+          {error}
+        </div>
+      )}
     </div>
   );
 }

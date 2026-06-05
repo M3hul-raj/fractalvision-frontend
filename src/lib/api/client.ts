@@ -11,7 +11,7 @@ export async function analyzeImage(
   options?: {
     analysisMode?: string;
     thresholdMethod?: string;
-    manualThreshold?: number;
+    thresholdValue?: number;
     invert?: boolean;
     denoise?: boolean;
     blurLevel?: number;
@@ -26,7 +26,7 @@ export async function analyzeImage(
   if (options) {
     if (options.analysisMode) formData.append("analysis_mode", options.analysisMode);
     if (options.thresholdMethod) formData.append("threshold_method", options.thresholdMethod);
-    if (options.manualThreshold !== undefined) formData.append("manual_threshold", options.manualThreshold.toString());
+    if (options.thresholdValue !== undefined) formData.append("threshold_value", options.thresholdValue.toString());
     if (options.invert !== undefined) formData.append("invert", options.invert.toString());
     if (options.denoise !== undefined) formData.append("denoise", options.denoise.toString());
     if (options.blurLevel !== undefined) formData.append("blur_level", options.blurLevel.toString());
@@ -42,7 +42,12 @@ export async function analyzeImage(
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`Analyze failed: ${res.status} - ${errText}`);
+    try {
+      const errJson = JSON.parse(errText);
+      throw new Error(errJson.detail || errJson.message || `Analyze failed: ${res.status}`);
+    } catch {
+      throw new Error(`Analyze failed: ${res.status} - ${errText}`);
+    }
   }
   return res.json();
 }

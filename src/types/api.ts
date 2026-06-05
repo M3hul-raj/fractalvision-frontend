@@ -24,6 +24,9 @@ export type AnalyzeApiResponse = {
   sensitivity?: SensitivityReport;
   processing_time_ms: number;
   binary_image_b64: string;
+  threshold_method: string;
+  threshold_value: number;
+  analysis_mode: string;
 };
 
 /** A single item in a batch analysis response. */

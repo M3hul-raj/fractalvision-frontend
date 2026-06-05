@@ -4,6 +4,7 @@
 
 import { create } from "zustand";
 import type { AnalysisResult, ProcessingState } from "@/types/analysis";
+import type { AnalyzeApiResponse } from "@/types/api";
 
 export interface AnalyzerStore {
   // --- State ---
@@ -14,6 +15,11 @@ export interface AnalyzerStore {
   processing: ProcessingState;
   isAnalyzing: boolean;
   selectedBoxSize: number | null;
+  thresholdMethod: 'otsu' | 'adaptive' | 'manual';
+  thresholdValue: number;
+  analysisMode: 'full_mask' | 'boundary' | 'texture';
+  lastResponse: AnalyzeApiResponse | null;
+  error: string | null;
 
   // --- Actions ---
   setFile: (file: File) => void;
@@ -22,6 +28,11 @@ export interface AnalyzerStore {
   setIsAnalyzing: (value: boolean) => void;
   setSelectedBoxSize: (size: number | null) => void;
   setBinaryImageUrl: (url: string | null) => void;
+  setThresholdMethod: (method: 'otsu' | 'adaptive' | 'manual') => void;
+  setThresholdValue: (value: number) => void;
+  setAnalysisMode: (mode: 'full_mask' | 'boundary' | 'texture') => void;
+  setLastResponse: (response: AnalyzeApiResponse | null) => void;
+  setError: (error: string | null) => void;
   reset: () => void;
 }
 
@@ -48,6 +59,11 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
   processing: { ...initialProcessing },
   isAnalyzing: false,
   selectedBoxSize: null,
+  thresholdMethod: 'otsu',
+  thresholdValue: 128,
+  analysisMode: 'full_mask',
+  lastResponse: null,
+  error: null,
 
   // --- Actions ---
   setFile: (file: File) => {
@@ -58,6 +74,8 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
       binaryImageUrl: null,
       result: null,
       selectedBoxSize: null,
+      lastResponse: null,
+      error: null,
     });
   },
 
@@ -87,6 +105,26 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
     set({ binaryImageUrl: url });
   },
 
+  setThresholdMethod: (method) => {
+    set({ thresholdMethod: method });
+  },
+
+  setThresholdValue: (value) => {
+    set({ thresholdValue: value });
+  },
+
+  setAnalysisMode: (mode) => {
+    set({ analysisMode: mode });
+  },
+
+  setLastResponse: (response) => {
+    set({ lastResponse: response });
+  },
+
+  setError: (error) => {
+    set({ error });
+  },
+
   reset: () => {
     set({
       originalFile: null,
@@ -96,6 +134,8 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
       processing: { ...initialProcessing },
       isAnalyzing: false,
       selectedBoxSize: null,
+      lastResponse: null,
+      error: null,
     });
   },
 }));

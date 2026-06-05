@@ -6,9 +6,12 @@ import ResultCard from "@/components/analyzer/ResultCard";
 import LogLogChart from "@/components/charts/LogLogChart";
 import PipelineViewer from "@/components/analyzer/PipelineViewer";
 import BoxSizeSlider from "@/components/analyzer/BoxSizeSlider";
+import PreprocessingControls from "@/components/analyzer/PreprocessingControls";
 import { useAnalyzerStore } from "@/store/analyzerStore";
+import { useAutoAnalyze } from "@/hooks/useAutoAnalyze";
 
 export default function LabPage() {
+  useAutoAnalyze();
   const { result, binaryImageUrl, selectedBoxSize } = useAnalyzerStore();
 
   return (
@@ -22,6 +25,7 @@ export default function LabPage() {
           </p>
         </div>
         
+        <PreprocessingControls />
         <ImageUploader />
         
         {result && binaryImageUrl && (
