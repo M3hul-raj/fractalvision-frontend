@@ -2,13 +2,21 @@
  * Core analysis types — the contract between frontend computation and API responses.
  */
 
+/** Sensitivity test result returned by the backend (snake_case to match API). */
+export type SensitivityResult = {
+  thresholds_tested: number[];
+  dimensions: (number | null)[];
+  std_deviation: number | null;
+  is_stable: boolean;
+};
+
 /** Result of a fractal dimension analysis. */
 export type AnalysisResult = {
   fractal_dimension: number;
   r_squared: number;
   intercept: number;
-  standard_error: number;
-  confidence_interval: [number, number];
+  standard_error?: number;
+  confidence_interval?: [number, number];
   box_sizes: number[];
   box_counts: number[];
   log_inverse_sizes: number[];
@@ -16,11 +24,12 @@ export type AnalysisResult = {
   fitted_values: number[];
   residuals: number[];
   foreground_ratio: number;
-  quality_score: number;
-  reliability: "High" | "Medium" | "Low";
+  quality_score?: number;
+  reliability?: "High" | "Medium" | "Low";
   interpretation: string;
   complexity_class: string;
   warnings: string[];
+  sensitivity?: SensitivityResult | null;
 };
 
 /** Current state of the image processing pipeline. */
@@ -38,17 +47,7 @@ export type ProcessingState = {
   analysisMode: "full_mask" | "boundary" | "texture" | "edge" | "grayscale";
 };
 
-/** Result of a single sensitivity test. */
-export type SensitivityResult = {
-  thresholdsTested?: number[];
-  anglesTested?: number[];
-  offsetsTested?: number[];
-  dimensions: number[];
-  stdDeviation: number;
-  isStable: boolean;
-};
-
-/** Aggregated sensitivity report. */
+/** Aggregated sensitivity report (legacy camelCase, kept for backward compat). */
 export type SensitivityReport = {
   threshold?: SensitivityResult;
   rotation?: SensitivityResult;

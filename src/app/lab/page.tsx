@@ -7,6 +7,7 @@ import LogLogChart from "@/components/charts/LogLogChart";
 import PipelineViewer from "@/components/analyzer/PipelineViewer";
 import BoxSizeSlider from "@/components/analyzer/BoxSizeSlider";
 import PreprocessingControls from "@/components/analyzer/PreprocessingControls";
+import QualityScore from "@/components/analyzer/QualityScore";
 import { useAnalyzerStore } from "@/store/analyzerStore";
 import { useAutoAnalyze } from "@/hooks/useAutoAnalyze";
 
@@ -37,6 +38,7 @@ export default function LabPage() {
             
             <div className="space-y-8">
               <ResultCard />
+              {result && <QualityScore />}
               <LogLogChart />
             </div>
           </div>

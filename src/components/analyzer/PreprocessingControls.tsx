@@ -10,8 +10,12 @@ export default function PreprocessingControls() {
     setThresholdValue,
     analysisMode,
     setAnalysisMode,
+    runSensitivity,
+    setRunSensitivity,
     isAnalyzing
   } = useAnalyzerStore();
+
+  const sensitivityAvailable = analysisMode === "full_mask" && thresholdMethod !== "adaptive";
 
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-md">
@@ -96,6 +100,36 @@ export default function PreprocessingControls() {
           </div>
         </div>
       </div>
+
+      {/* Sensitivity Test Toggle */}
+      <div className={`mt-6 pt-5 border-t border-gray-700 flex items-center justify-between ${!sensitivityAvailable ? "opacity-40" : ""}`}>
+        <div>
+          <span className="text-sm font-semibold text-gray-300">Sensitivity Test</span>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {sensitivityAvailable
+              ? "Measures D stability across threshold ±15 (~1s extra)"
+              : analysisMode !== "full_mask"
+              ? "Only available in Full Mask mode"
+              : "Not available with Adaptive threshold"}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={runSensitivity}
+          disabled={!sensitivityAvailable || isAnalyzing}
+          onClick={() => sensitivityAvailable && !isAnalyzing && setRunSensitivity(!runSensitivity)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800
+            ${runSensitivity && sensitivityAvailable ? "bg-blue-600" : "bg-gray-600"}
+            ${!sensitivityAvailable || isAnalyzing ? "cursor-not-allowed" : "cursor-pointer"}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
+              ${runSensitivity && sensitivityAvailable ? "translate-x-6" : "translate-x-1"}`}
+          />
+        </button>
+      </div>
     </div>
   );
 }
+

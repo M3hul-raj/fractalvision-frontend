@@ -8,6 +8,7 @@ export function useAutoAnalyze() {
     thresholdMethod,
     thresholdValue,
     analysisMode,
+    runSensitivity,
     setIsAnalyzing,
     setResult,
     setLastResponse,
@@ -23,8 +24,9 @@ export function useAutoAnalyze() {
         analysisMode,
         thresholdMethod,
         thresholdValue,
+        runSensitivity,
       });
-      setResult(res.result);
+      setResult({ ...res.result, sensitivity: res.sensitivity ?? null });
       setLastResponse(res);
       if (res.binary_image_b64) {
         setBinaryImageUrl(`data:image/png;base64,${res.binary_image_b64}`);
@@ -37,12 +39,12 @@ export function useAutoAnalyze() {
     }
   };
 
-  // Watch for thresholdMethod and analysisMode
+  // Watch for thresholdMethod, analysisMode, and runSensitivity
   useEffect(() => {
     if (!originalFile) return;
     triggerAnalysis(originalFile);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thresholdMethod, analysisMode]);
+  }, [thresholdMethod, analysisMode, runSensitivity]);
 
   // Watch for thresholdValue (debounced)
   useEffect(() => {

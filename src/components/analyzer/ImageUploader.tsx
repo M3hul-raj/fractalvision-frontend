@@ -5,7 +5,7 @@ import { useAnalyzerStore } from "@/store/analyzerStore";
 import { analyzeImage } from "@/lib/api/client";
 
 export default function ImageUploader() {
-  const { setFile, setResult, setIsAnalyzing, isAnalyzing, setBinaryImageUrl, setLastResponse, analysisMode, thresholdMethod, thresholdValue, error, setError } = useAnalyzerStore();
+  const { setFile, setResult, setIsAnalyzing, isAnalyzing, setBinaryImageUrl, setLastResponse, analysisMode, thresholdMethod, thresholdValue, runSensitivity, error, setError } = useAnalyzerStore();
   const [isDragActive, setIsDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -17,9 +17,10 @@ export default function ImageUploader() {
       const res = await analyzeImage(file, { 
         analysisMode, 
         thresholdMethod, 
-        thresholdValue 
+        thresholdValue,
+        runSensitivity,
       });
-      setResult(res.result);
+      setResult({ ...res.result, sensitivity: res.sensitivity ?? null });
       setLastResponse(res);
       if (res.binary_image_b64) {
         setBinaryImageUrl(`data:image/png;base64,${res.binary_image_b64}`);

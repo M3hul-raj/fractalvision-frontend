@@ -2,7 +2,7 @@
  * API response types — shapes returned by the FastAPI backend.
  */
 
-import type { AnalysisResult, SensitivityReport } from "./analysis";
+import type { AnalysisResult, SensitivityResult } from "./analysis";
 
 /** Parameters echoed back in analysis response. */
 export type AnalysisParameters = {
@@ -20,8 +20,13 @@ export type AnalysisParameters = {
 /** Response from POST /api/v1/analyze. */
 export type AnalyzeApiResponse = {
   parameters: AnalysisParameters;
-  result: AnalysisResult;
-  sensitivity?: SensitivityReport;
+  result: AnalysisResult & {
+    standard_error?: number;
+    confidence_interval?: [number, number];
+    quality_score?: number;
+    reliability?: 'High' | 'Medium' | 'Low';
+  };
+  sensitivity?: SensitivityResult | null;
   processing_time_ms: number;
   binary_image_b64: string;
   threshold_method: string;

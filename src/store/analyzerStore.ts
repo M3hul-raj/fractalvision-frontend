@@ -20,6 +20,7 @@ export interface AnalyzerStore {
   analysisMode: 'full_mask' | 'boundary' | 'texture';
   lastResponse: AnalyzeApiResponse | null;
   error: string | null;
+  runSensitivity: boolean;
 
   // --- Actions ---
   setFile: (file: File) => void;
@@ -33,6 +34,7 @@ export interface AnalyzerStore {
   setAnalysisMode: (mode: 'full_mask' | 'boundary' | 'texture') => void;
   setLastResponse: (response: AnalyzeApiResponse | null) => void;
   setError: (error: string | null) => void;
+  setRunSensitivity: (value: boolean) => void;
   reset: () => void;
 }
 
@@ -64,6 +66,7 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
   analysisMode: 'full_mask',
   lastResponse: null,
   error: null,
+  runSensitivity: false,
 
   // --- Actions ---
   setFile: (file: File) => {
@@ -125,6 +128,9 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
     set({ error });
   },
 
+  setRunSensitivity: (value) => {
+    set({ runSensitivity: value });
+  },
   reset: () => {
     set({
       originalFile: null,

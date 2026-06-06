@@ -32,7 +32,7 @@ export async function analyzeImage(
     if (options.blurLevel !== undefined) formData.append("blur_level", options.blurLevel.toString());
     if (options.boxSizes) formData.append("box_sizes", options.boxSizes);
     if (options.gridOffsets) formData.append("grid_offsets", options.gridOffsets);
-    if (options.runSensitivity !== undefined) formData.append("run_sensitivity", options.runSensitivity.toString());
+    if (options.runSensitivity === true) formData.append("run_sensitivity", "true");
   }
 
   const res = await fetch(`${API_URL}/analyze`, {
