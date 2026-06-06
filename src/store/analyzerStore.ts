@@ -5,6 +5,7 @@
 import { create } from "zustand";
 import type { AnalysisResult, ProcessingState } from "@/types/analysis";
 import type { AnalyzeApiResponse } from "@/types/api";
+import type { Specimen } from "@/types/specimen";
 
 export interface AnalyzerStore {
   // --- State ---
@@ -21,6 +22,7 @@ export interface AnalyzerStore {
   lastResponse: AnalyzeApiResponse | null;
   error: string | null;
   runSensitivity: boolean;
+  comparisonSpecimen: Specimen | null;
 
   // --- Actions ---
   setFile: (file: File) => void;
@@ -35,6 +37,7 @@ export interface AnalyzerStore {
   setLastResponse: (response: AnalyzeApiResponse | null) => void;
   setError: (error: string | null) => void;
   setRunSensitivity: (value: boolean) => void;
+  setComparisonSpecimen: (specimen: Specimen | null) => void;
   reset: () => void;
 }
 
@@ -67,6 +70,7 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
   lastResponse: null,
   error: null,
   runSensitivity: false,
+  comparisonSpecimen: null,
 
   // --- Actions ---
   setFile: (file: File) => {
@@ -131,6 +135,11 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
   setRunSensitivity: (value) => {
     set({ runSensitivity: value });
   },
+
+  setComparisonSpecimen: (specimen) => {
+    set({ comparisonSpecimen: specimen });
+  },
+
   reset: () => {
     set({
       originalFile: null,
