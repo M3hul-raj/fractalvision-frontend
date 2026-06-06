@@ -35,7 +35,7 @@ export type ProcessingState = {
   invert: boolean;
   denoise: boolean;
   blurLevel: number;
-  analysisMode: "full-mask" | "boundary" | "texture" | "edge" | "grayscale";
+  analysisMode: "full_mask" | "boundary" | "texture" | "edge" | "grayscale";
 };
 
 /** Result of a single sensitivity test. */

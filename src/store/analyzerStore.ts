@@ -47,7 +47,7 @@ const initialProcessing: ProcessingState = {
   invert: false,
   denoise: false,
   blurLevel: 0,
-  analysisMode: "full-mask",
+  analysisMode: "full_mask",
 };
 
 export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
@@ -80,8 +80,8 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
   },
 
   setResult: (result: AnalysisResult) => {
-    set({ 
-      result, 
+    set({
+      result,
       isAnalyzing: false,
       selectedBoxSize: result.box_sizes && result.box_sizes.length > 0 ? result.box_sizes[0] : null
     });
