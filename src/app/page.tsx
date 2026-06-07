@@ -42,7 +42,7 @@ export default function HomePage() {
               Quantify the Complexity Hidden in Nature
             </motion.h1>
             
-            <motion.p variants={fadeInUp} className="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl md:mx-auto leading-relaxed">
+            <motion.p variants={fadeInUp} className="text-lg md:text-xl text-gray-400 mb-6 max-w-2xl md:mx-auto leading-relaxed">
               An interactive scientific tool for computing fractal dimensions of natural
               patterns using the box-counting method — underpinned by original academic
               research in fractal geometry.
@@ -164,11 +164,11 @@ export default function HomePage() {
                 variants={fadeInUp}
                 className="relative z-10 flex-1 bg-gray-900/80 backdrop-blur-md p-6 rounded-2xl border border-gray-800 shadow-xl overflow-hidden"
               >
-                <div className="absolute -top-4 -right-2 text-8xl font-black text-white/[0.03] select-none pointer-events-none">
+                <div className="absolute -top-4 -right-2 text-8xl font-black text-white/[0.08] select-none pointer-events-none">
                   {item.step}
                 </div>
                 <h3 className="text-xl font-bold text-blue-400 mb-3 relative z-10">{item.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed relative z-10">
+                <p className="text-gray-300 text-sm leading-relaxed relative z-10">
                   {item.desc}
                 </p>
               </motion.div>
@@ -304,17 +304,17 @@ export default function HomePage() {
             className="mt-20 flex flex-col items-center"
           >
             <h3 className="text-[10px] font-bold text-gray-600 uppercase tracking-widest mb-6">Data Flow Architecture</h3>
-            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-xs md:text-sm font-mono text-gray-400">
-              <div className="px-4 py-2 border border-gray-700 bg-gray-900 rounded-lg">Browser</div>
+            <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4 text-sm md:text-base font-mono text-gray-400 font-medium">
+              <div className="px-5 py-3 border border-gray-700 bg-gray-900 rounded-lg shadow-sm">Browser</div>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="hidden md:block text-gray-600"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="block md:hidden text-gray-600 rotate-90"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              <div className="px-4 py-2 border border-blue-900 bg-blue-900/10 rounded-lg text-blue-300">Next.js + Zustand</div>
+              <div className="px-5 py-3 border border-blue-900 bg-blue-900/10 rounded-lg text-blue-300 shadow-sm">Next.js + Zustand</div>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="hidden md:block text-gray-600"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="block md:hidden text-gray-600 rotate-90"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              <div className="px-4 py-2 border border-amber-900 bg-amber-900/10 rounded-lg text-amber-300">FastAPI + OpenCV</div>
+              <div className="px-5 py-3 border border-amber-900 bg-amber-900/10 rounded-lg text-amber-300 shadow-sm">FastAPI + OpenCV</div>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="hidden md:block text-gray-600"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="block md:hidden text-gray-600 rotate-90"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-              <div className="px-4 py-2 border border-emerald-900 bg-emerald-900/10 rounded-lg text-emerald-300">Supabase</div>
+              <div className="px-5 py-3 border border-emerald-900 bg-emerald-900/10 rounded-lg text-emerald-300 shadow-sm">Supabase</div>
             </div>
           </motion.div>
         </div>
