@@ -82,7 +82,7 @@ export default function Navbar() {
       {isMobileMenuOpen && (
         <div
           id="mobile-nav-menu"
-          className="lg:hidden border-t border-white/10 bg-gray-950/95 backdrop-blur-md"
+          className="lg:hidden border-t border-white/10 bg-gray-950/95 backdrop-blur-md max-h-[85vh] overflow-y-auto pb-10"
         >
           <ul className="flex flex-col px-4 py-2 space-y-1">
             {NAV_LINKS.map(({ href, label }) => {
