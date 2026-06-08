@@ -51,7 +51,7 @@ export type BatchAnalyzeApiResponse = {
   processingTimeMs: number;
 };
 
-/** Response from POST /api/v1/fractals/{id}/generate. */
+/** Response from POST /api/v1/fractals/{id}/generate (legacy camelCase stub). */
 export type GenerateFractalApiResponse = {
   fractalId: string;
   name: string;
@@ -66,6 +66,32 @@ export type GenerateFractalApiResponse = {
   logInverseSizes: number[];
   logCounts: number[];
   processingTimeMs: number;
+};
+
+/** Response from POST /api/v1/fractals/{id}/generate — snake_case matching the backend. */
+export type GenerateFractalResponse = {
+  fractal_id: string;
+  name: string;
+  iterations: number;
+  theoretical_dimension: number;
+  computed_dimension: number;
+  error_percentage: number;
+  r_squared: number;
+  image_base64: string;
+  box_sizes: number[];
+  box_counts: number[];
+  log_inverse_sizes: number[];
+  log_counts: number[];
+  processing_time_ms: number;
+};
+
+/** A single standard fractal entry from GET /api/v1/fractals. */
+export type StandardFractalInfo = {
+  fractal_id: string;
+  name: string;
+  theoretical_dimension: number;
+  max_iterations: number;
+  description: string;
 };
 
 /** Standard API error response. */

@@ -2,7 +2,7 @@
  * FastAPI client — typed fetch wrapper for the backend compute API.
  */
 
-import type { AnalyzeApiResponse, BatchAnalyzeApiResponse, GenerateFractalApiResponse } from "@/types/api";
+import type { AnalyzeApiResponse, BatchAnalyzeApiResponse, GenerateFractalResponse, StandardFractalInfo } from "@/types/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
@@ -72,9 +72,36 @@ export async function generateFractal(
     imageSize?: number;
     boxSizes?: number[];
   }
-): Promise<GenerateFractalApiResponse> {
-  // TODO: Phase 7
-  throw new Error("Not implemented");
+): Promise<GenerateFractalResponse> {
+  const body: Record<string, unknown> = {
+    iterations: options?.iterations ?? 4,
+    image_size: options?.imageSize ?? 1024,
+  };
+  if (options?.boxSizes && options.boxSizes.length > 0) {
+    body.box_sizes = options.boxSizes;
+  }
+  const res = await fetch(`${API_URL}/fractals/${fractalId}/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    try {
+      const errJson = JSON.parse(errText);
+      throw new Error(errJson.detail || errJson.message || `Generate failed: ${res.status}`);
+    } catch {
+      throw new Error(`Generate failed: ${res.status} - ${errText}`);
+    }
+  }
+  return res.json();
+}
+
+/** List all available standard mathematical fractals. */
+export async function listFractals(): Promise<StandardFractalInfo[]> {
+  const res = await fetch(`${API_URL}/fractals`);
+  if (!res.ok) throw new Error(`listFractals failed: ${res.status}`);
+  return res.json();
 }
 
 /** Fetch health status. */
