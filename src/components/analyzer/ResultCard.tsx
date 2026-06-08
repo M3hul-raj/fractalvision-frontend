@@ -1,6 +1,7 @@
 "use client";
 
 import { useAnalyzerStore } from "@/store/analyzerStore";
+import ReportButton from "@/components/analyzer/ReportButton";
 
 export default function ResultCard() {
   const { result, lastResponse, isAnalyzing } = useAnalyzerStore();
@@ -9,9 +10,18 @@ export default function ResultCard() {
 
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-md flex flex-col justify-center">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-gray-100">Analysis Result</h3>
-        {isAnalyzing && <span className="text-xs font-mono text-blue-400 animate-pulse bg-blue-900/30 px-2 py-1 rounded">Re-computing...</span>}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        {/* Left: title + re-computing badge */}
+        <div className="flex flex-wrap items-center gap-3">
+          <h3 className="text-xl font-bold text-gray-100">Analysis Result</h3>
+          {isAnalyzing && (
+            <span className="text-xs font-mono text-blue-400 animate-pulse bg-blue-900/30 px-2 py-1 rounded">
+              Re-computing...
+            </span>
+          )}
+        </div>
+        {/* Right: export button */}
+        <ReportButton />
       </div>
       <div className="grid grid-cols-2 gap-6 text-gray-300 mb-6">
         <div>

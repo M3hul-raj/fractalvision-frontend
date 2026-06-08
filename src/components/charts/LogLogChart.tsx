@@ -197,7 +197,7 @@ export default function LogLogChart({ comparisonSpecimen }: LogLogChartProps) {
   if (!result) return null;
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-md">
+    <div id="report-loglog-chart" className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-md">
       <h3 className="text-xl font-bold mb-4 text-gray-100">Log-Log Plot</h3>
       <div className="flex justify-center text-gray-300">
         <svg
