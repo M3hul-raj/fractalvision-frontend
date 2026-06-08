@@ -13,11 +13,37 @@ import ComparisonPanel from "@/components/compare/ComparisonPanel";
 import SpecimenPickerModal from "@/components/compare/SpecimenPickerModal";
 import { useAnalyzerStore } from "@/store/analyzerStore";
 import { useAutoAnalyze } from "@/hooks/useAutoAnalyze";
+import { analyzeImage } from "@/lib/api/client";
 
 export default function LabPage() {
   useAutoAnalyze();
-  const { result, binaryImageUrl, selectedBoxSize, comparisonSpecimen } = useAnalyzerStore();
+  const store = useAnalyzerStore();
+  const { result, binaryImageUrl, selectedBoxSize, comparisonSpecimen } = store;
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const handleFileUpload = async (file: File) => {
+    store.setFile(file);
+    store.setIsAnalyzing(true);
+    store.setError(null);
+    try {
+      const res = await analyzeImage(file, {
+        analysisMode: store.analysisMode,
+        thresholdMethod: store.thresholdMethod,
+        thresholdValue: store.thresholdValue,
+        runSensitivity: store.runSensitivity,
+      });
+      store.setResult({ ...res.result, sensitivity: res.sensitivity ?? null });
+      store.setLastResponse(res);
+      if (res.binary_image_b64) {
+        store.setBinaryImageUrl(`data:image/png;base64,${res.binary_image_b64}`);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to analyze image";
+      store.setError(message);
+    } finally {
+      store.setIsAnalyzing(false);
+    }
+  };
 
   return (
     <PageShell>
@@ -31,7 +57,11 @@ export default function LabPage() {
         </div>
 
         <PreprocessingControls />
-        <ImageUploader />
+        <ImageUploader
+          onFileDrop={handleFileUpload}
+          isAnalyzing={store.isAnalyzing}
+          error={store.error}
+        />
 
         {result && binaryImageUrl && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

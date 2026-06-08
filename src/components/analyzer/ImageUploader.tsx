@@ -1,37 +1,16 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { useAnalyzerStore } from "@/store/analyzerStore";
-import { analyzeImage } from "@/lib/api/client";
 
-export default function ImageUploader() {
-  const { setFile, setResult, setIsAnalyzing, isAnalyzing, setBinaryImageUrl, setLastResponse, analysisMode, thresholdMethod, thresholdValue, runSensitivity, error, setError } = useAnalyzerStore();
+interface ImageUploaderProps {
+  onFileDrop: (file: File) => void;
+  isAnalyzing: boolean;
+  error: string | null;
+}
+
+export default function ImageUploader({ onFileDrop, isAnalyzing, error }: ImageUploaderProps) {
   const [isDragActive, setIsDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const handleFile = async (file: File) => {
-    if (!file) return;
-    setFile(file);
-    setIsAnalyzing(true);
-    try {
-      const res = await analyzeImage(file, { 
-        analysisMode, 
-        thresholdMethod, 
-        thresholdValue,
-        runSensitivity,
-      });
-      setResult({ ...res.result, sensitivity: res.sensitivity ?? null });
-      setLastResponse(res);
-      if (res.binary_image_b64) {
-        setBinaryImageUrl(`data:image/png;base64,${res.binary_image_b64}`);
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to analyze image");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
 
   const onDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -46,15 +25,14 @@ export default function ImageUploader() {
     e.preventDefault();
     setIsDragActive(false);
     if (isAnalyzing) return;
-    
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFile(e.dataTransfer.files[0]);
+      onFileDrop(e.dataTransfer.files[0]);
     }
   };
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      handleFile(e.target.files[0]);
+      onFileDrop(e.target.files[0]);
     }
   };
 
@@ -69,12 +47,12 @@ export default function ImageUploader() {
         ${isAnalyzing ? "opacity-50 cursor-not-allowed" : ""}
       `}
     >
-      <input 
+      <input
         ref={inputRef}
-        type="file" 
-        accept="image/jpeg, image/png, image/webp" 
-        onChange={onChange} 
-        className="hidden" 
+        type="file"
+        accept="image/jpeg, image/png, image/webp"
+        onChange={onChange}
+        className="hidden"
         disabled={isAnalyzing}
       />
       {isDragActive ? (
@@ -86,7 +64,10 @@ export default function ImageUploader() {
       )}
       <p className="text-sm text-gray-500 mt-2">Supports JPG, PNG, WEBP</p>
       {error && (
-        <div className="mt-4 p-3 bg-red-900/50 border border-red-500 rounded text-red-200 text-sm" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="mt-4 p-3 bg-red-900/50 border border-red-500 rounded text-red-200 text-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
           {error}
         </div>
       )}
