@@ -215,7 +215,14 @@ export async function generateReport(params: {
     const metrics: MB[] = [
       { label: "FRACTAL DIMENSION", value: result.fractal_dimension.toFixed(4), color: [2, 132, 199]  },
       { label: "R\u00b2 SCORE",         value: result.r_squared.toFixed(4),        color: [21, 128, 61]  },
-      { label: "QUALITY SCORE",    value: result.quality_score != null ? result.quality_score.toFixed(1) : "N/A", color: [219, 39, 119] },
+      {
+        label: "QUALITY SCORE",
+        value: result.quality_score != null ? result.quality_score.toFixed(1) : "N/A",
+        color: result.quality_score == null ? [71, 85, 105]
+             : result.quality_score >= 85 ? [21, 128, 61]  // Green (matches Reliability High)
+             : result.quality_score >= 70 ? [217, 119, 6]  // Amber (matches Reliability Medium)
+             :                              [220, 38, 38]  // Red (matches Reliability Low)
+      },
       {
         label: "RELIABILITY",
         value: result.reliability ?? "N/A",
@@ -416,19 +423,27 @@ export async function generateReport(params: {
       }
     }
 
-    // ── Sensitivity card (fills page 2 from chart bottom to footer) ──────────
+    // ── Sensitivity card (dynamically sized to fit content) ──────────────────
     const chartCardBottom = 36 + chartH + 7 * 2;
     const sensCardY  = chartH > 0 ? chartCardBottom + 8 : 84;
-    const sensFillH  = Math.max(44, FOOTER_Y - sensCardY);
-
+    
     if (result.sensitivity != null) {
-      drawCard(doc, sensCardY, sensFillH);
+      const sens = result.sensitivity;
+      const stdDevStr = sens.std_deviation != null ? sens.std_deviation.toFixed(4) : "N/A";
+      const conclusionText = sens.is_stable
+        ? `The fractal dimension is stable across all tested thresholds (std dev = ${stdDevStr}), confirming that structural self-similarity is robust and not an artifact of the chosen threshold.`
+        : `The fractal dimension varies across tested thresholds (std dev = ${stdDevStr}). The structure may not be perfectly self-similar and results should be interpreted with caution.`;
+
+      const wrappedConclusion = doc.splitTextToSize(conclusionText, 162) as string[];
+      const conclusionTextHeight = wrappedConclusion.length * 4.0;
+      const sensCardH = 60 + conclusionTextHeight;
+
+      drawCard(doc, sensCardY, sensCardH);
       drawSectionHeading(doc, "Sensitivity Analysis", 21, sensCardY + 9);
 
       doc.setDrawColor(226, 232, 240);
       doc.line(21, sensCardY + 12, 189, sensCardY + 12);
 
-      const sens = result.sensitivity;
       const sensRows: [string, string][] = [
         ["Std Deviation",     sens.std_deviation?.toFixed(4) ?? "N/A"],
         ["Stable",            sens.is_stable ? "Yes" : "No"],
@@ -449,23 +464,18 @@ export async function generateReport(params: {
       doc.setDrawColor(226, 232, 240);
       doc.line(21, conclusionY - 3, 189, conclusionY - 3);
 
-      const stdDevStr = sens.std_deviation != null ? sens.std_deviation.toFixed(4) : "N/A";
-      const conclusionText = sens.is_stable
-        ? `The fractal dimension is stable across all tested thresholds (std dev = ${stdDevStr}), confirming that structural self-similarity is robust and not an artifact of the chosen threshold.`
-        : `The fractal dimension varies across tested thresholds (std dev = ${stdDevStr}). The structure may not be perfectly self-similar and results should be interpreted with caution.`;
-
       doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(71, 85, 105);
-      const wrappedConclusion = doc.splitTextToSize(conclusionText, 162) as string[];
       doc.text(wrappedConclusion, 21, conclusionY + 3);
     } else {
-      // No sensitivity — hint card fills to footer
-      drawCard(doc, sensCardY, sensFillH);
-      drawSectionHeading(doc, "Sensitivity Analysis", 21, sensCardY + 9);
-
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(148, 163, 184);
       const hintText =
         "Sensitivity data unavailable. Enable the Sensitivity Test toggle in the Analyzer Lab and re-run to see threshold stability metrics here.";
       const wrappedHint = doc.splitTextToSize(hintText, 162) as string[];
+      const sensCardH = 28 + wrappedHint.length * 4.5;
+
+      drawCard(doc, sensCardY, sensCardH);
+      drawSectionHeading(doc, "Sensitivity Analysis", 21, sensCardY + 9);
+
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(148, 163, 184);
       doc.text(wrappedHint, 21, sensCardY + 22);
     }
 
