@@ -11,7 +11,6 @@ const NAV_LINKS = [
   { href: "/compare", label: "Compare" },
   { href: "/explorer", label: "Fractal Explorer" },
   { href: "/methodology", label: "Methodology" },
-  { href: "/benchmarks", label: "Benchmarks" },
   { href: "/limitations", label: "Limitations" },
 ] as const;
 
