@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { Analytics } from "@vercel/analytics/react"; // 1. ADDED IMPORT
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://fractalvision.vercel.app"),
@@ -43,6 +44,7 @@ export default function RootLayout({
         <Navbar />
         {children}
         <Footer />
+        <Analytics /> {/* 2. ADDED COMPONENT */}
       </body>
     </html>
   );
