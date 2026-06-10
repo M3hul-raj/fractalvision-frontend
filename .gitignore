@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+public/wasm/box_counting.js
+public/wasm/box_counting.wasm
