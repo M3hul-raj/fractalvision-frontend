@@ -6,6 +6,7 @@
 "use client";
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { AnalysisResult } from "@/types/analysis";
 import type { Specimen } from "@/types/specimen";
 
@@ -66,79 +67,115 @@ export interface CompareStore {
   resetSlot: (slot: SlotKey) => void;
 }
 
-export const useCompareStore = create<CompareStore>((set) => ({
-  A: { ...defaultSlot },
-  B: { ...defaultSlot },
+export const useCompareStore = create<CompareStore>()(
+  persist(
+    (set) => ({
+      A: { ...defaultSlot },
+      B: { ...defaultSlot },
 
-  setSlotField: (slot, field, value) =>
-    set((state) => ({
-      [slot]: { ...state[slot], [field]: value },
-    })),
+      setSlotField: (slot, field, value) =>
+        set((state) => ({
+          [slot]: { ...state[slot], [field]: value },
+        })),
 
-  setSlotFile: (slot, file, originalImageUrl) =>
-    set((state) => ({
-      [slot]: {
-        ...state[slot],
-        file,
-        originalImageUrl,
-        sourceType: "upload",
-        result: null,
-        binaryImageUrl: null,
-        error: null,
+      setSlotFile: (slot, file, originalImageUrl) =>
+        set((state) => ({
+          [slot]: {
+            ...state[slot],
+            file,
+            originalImageUrl,
+            sourceType: "upload",
+            result: null,
+            binaryImageUrl: null,
+            error: null,
+          },
+        })),
+
+      setSlotResult: (slot, result) =>
+        set((state) => ({
+          [slot]: { ...state[slot], result, isAnalyzing: false },
+        })),
+
+      setSlotBinaryImageUrl: (slot, url) =>
+        set((state) => ({
+          [slot]: { ...state[slot], binaryImageUrl: url },
+        })),
+
+      setSlotIsAnalyzing: (slot, value) =>
+        set((state) => ({
+          [slot]: { ...state[slot], isAnalyzing: value },
+        })),
+
+      setSlotError: (slot, error) =>
+        set((state) => ({
+          [slot]: { ...state[slot], error, isAnalyzing: false },
+        })),
+
+      setSlotSourceType: (slot, type) =>
+        set((state) => ({
+          [slot]: { ...state[slot], sourceType: type },
+        })),
+
+      setSlotThresholdMethod: (slot, method) =>
+        set((state) => ({
+          [slot]: { ...state[slot], thresholdMethod: method },
+        })),
+
+      setSlotThresholdValue: (slot, value) =>
+        set((state) => ({
+          [slot]: { ...state[slot], thresholdValue: value },
+        })),
+
+      setSlotAnalysisMode: (slot, mode) =>
+        set((state) => ({
+          [slot]: { ...state[slot], analysisMode: mode },
+        })),
+
+      setSlotSpecimen: (slot, specimen) =>
+        set((state) => ({
+          [slot]: {
+            ...state[slot],
+            selectedSpecimen: specimen,
+            sourceType: specimen ? "specimen" : null,
+          },
+        })),
+
+      resetSlot: (slot) =>
+        set(() => ({
+          [slot]: { ...defaultSlot },
+        })),
+    }),
+    {
+      name: 'fractalvision-compare',
+      partialize: (state) => ({
+        A: {
+          sourceType: state.A.sourceType,
+          binaryImageUrl: state.A.binaryImageUrl,
+          thresholdMethod: state.A.thresholdMethod,
+          thresholdValue: state.A.thresholdValue,
+          analysisMode: state.A.analysisMode,
+          selectedSpecimen: state.A.selectedSpecimen,
+          result: state.A.result,
+        },
+        B: {
+          sourceType: state.B.sourceType,
+          binaryImageUrl: state.B.binaryImageUrl,
+          thresholdMethod: state.B.thresholdMethod,
+          thresholdValue: state.B.thresholdValue,
+          analysisMode: state.B.analysisMode,
+          selectedSpecimen: state.B.selectedSpecimen,
+          result: state.B.result,
+        },
+      }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<CompareStore>;
+        return {
+          ...currentState,
+          ...persisted,
+          A: persisted?.A ? { ...currentState.A, ...persisted.A } : currentState.A,
+          B: persisted?.B ? { ...currentState.B, ...persisted.B } : currentState.B,
+        };
       },
-    })),
-
-  setSlotResult: (slot, result) =>
-    set((state) => ({
-      [slot]: { ...state[slot], result, isAnalyzing: false },
-    })),
-
-  setSlotBinaryImageUrl: (slot, url) =>
-    set((state) => ({
-      [slot]: { ...state[slot], binaryImageUrl: url },
-    })),
-
-  setSlotIsAnalyzing: (slot, value) =>
-    set((state) => ({
-      [slot]: { ...state[slot], isAnalyzing: value },
-    })),
-
-  setSlotError: (slot, error) =>
-    set((state) => ({
-      [slot]: { ...state[slot], error, isAnalyzing: false },
-    })),
-
-  setSlotSourceType: (slot, type) =>
-    set((state) => ({
-      [slot]: { ...state[slot], sourceType: type },
-    })),
-
-  setSlotThresholdMethod: (slot, method) =>
-    set((state) => ({
-      [slot]: { ...state[slot], thresholdMethod: method },
-    })),
-
-  setSlotThresholdValue: (slot, value) =>
-    set((state) => ({
-      [slot]: { ...state[slot], thresholdValue: value },
-    })),
-
-  setSlotAnalysisMode: (slot, mode) =>
-    set((state) => ({
-      [slot]: { ...state[slot], analysisMode: mode },
-    })),
-
-  setSlotSpecimen: (slot, specimen) =>
-    set((state) => ({
-      [slot]: {
-        ...state[slot],
-        selectedSpecimen: specimen,
-        sourceType: specimen ? "specimen" : null,
-      },
-    })),
-
-  resetSlot: (slot) =>
-    set(() => ({
-      [slot]: { ...defaultSlot },
-    })),
-}));
+    }
+  )
+);

@@ -3,6 +3,7 @@
  */
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { AnalysisResult, ProcessingState } from "@/types/analysis";
 import type { AnalyzeApiResponse } from "@/types/api";
 import type { Specimen } from "@/types/specimen";
@@ -55,93 +56,10 @@ const initialProcessing: ProcessingState = {
   analysisMode: "full_mask",
 };
 
-export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
-  // --- Initial State ---
-  originalFile: null,
-  originalImageUrl: null,
-  binaryImageUrl: null,
-  result: null,
-  processing: { ...initialProcessing },
-  isAnalyzing: false,
-  selectedBoxSize: null,
-  thresholdMethod: 'otsu',
-  thresholdValue: 128,
-  analysisMode: 'full_mask',
-  lastResponse: null,
-  error: null,
-  runSensitivity: false,
-  comparisonSpecimen: null,
-
-  // --- Actions ---
-  setFile: (file: File) => {
-    const url = URL.createObjectURL(file);
-    set({
-      originalFile: file,
-      originalImageUrl: url,
-      binaryImageUrl: null,
-      result: null,
-      selectedBoxSize: null,
-      lastResponse: null,
-      error: null,
-    });
-  },
-
-  setResult: (result: AnalysisResult) => {
-    set({
-      result,
-      isAnalyzing: false,
-      selectedBoxSize: result.box_sizes && result.box_sizes.length > 0 ? result.box_sizes[0] : null
-    });
-  },
-
-  setProcessing: (updates: Partial<ProcessingState>) => {
-    set((state) => ({
-      processing: { ...state.processing, ...updates },
-    }));
-  },
-
-  setIsAnalyzing: (value: boolean) => {
-    set({ isAnalyzing: value });
-  },
-
-  setSelectedBoxSize: (size: number | null) => {
-    set({ selectedBoxSize: size });
-  },
-
-  setBinaryImageUrl: (url: string | null) => {
-    set({ binaryImageUrl: url });
-  },
-
-  setThresholdMethod: (method) => {
-    set({ thresholdMethod: method });
-  },
-
-  setThresholdValue: (value) => {
-    set({ thresholdValue: value });
-  },
-
-  setAnalysisMode: (mode) => {
-    set({ analysisMode: mode });
-  },
-
-  setLastResponse: (response) => {
-    set({ lastResponse: response });
-  },
-
-  setError: (error) => {
-    set({ error });
-  },
-
-  setRunSensitivity: (value) => {
-    set({ runSensitivity: value });
-  },
-
-  setComparisonSpecimen: (specimen) => {
-    set({ comparisonSpecimen: specimen });
-  },
-
-  reset: () => {
-    set({
+export const useAnalyzerStore = create<AnalyzerStore>()(
+  persist(
+    (set) => ({
+      // --- Initial State ---
       originalFile: null,
       originalImageUrl: null,
       binaryImageUrl: null,
@@ -149,8 +67,109 @@ export const useAnalyzerStore = create<AnalyzerStore>((set) => ({
       processing: { ...initialProcessing },
       isAnalyzing: false,
       selectedBoxSize: null,
+      thresholdMethod: 'otsu',
+      thresholdValue: 128,
+      analysisMode: 'full_mask',
       lastResponse: null,
       error: null,
-    });
-  },
-}));
+      runSensitivity: false,
+      comparisonSpecimen: null,
+
+      // --- Actions ---
+      setFile: (file: File) => {
+        const url = URL.createObjectURL(file);
+        set({
+          originalFile: file,
+          originalImageUrl: url,
+          binaryImageUrl: null,
+          result: null,
+          selectedBoxSize: null,
+          lastResponse: null,
+          error: null,
+        });
+      },
+
+      setResult: (result: AnalysisResult) => {
+        set({
+          result,
+          isAnalyzing: false,
+          selectedBoxSize: result.box_sizes && result.box_sizes.length > 0 ? result.box_sizes[0] : null
+        });
+      },
+
+      setProcessing: (updates: Partial<ProcessingState>) => {
+        set((state) => ({
+          processing: { ...state.processing, ...updates },
+        }));
+      },
+
+      setIsAnalyzing: (value: boolean) => {
+        set({ isAnalyzing: value });
+      },
+
+      setSelectedBoxSize: (size: number | null) => {
+        set({ selectedBoxSize: size });
+      },
+
+      setBinaryImageUrl: (url: string | null) => {
+        set({ binaryImageUrl: url });
+      },
+
+      setThresholdMethod: (method) => {
+        set({ thresholdMethod: method });
+      },
+
+      setThresholdValue: (value) => {
+        set({ thresholdValue: value });
+      },
+
+      setAnalysisMode: (mode) => {
+        set({ analysisMode: mode });
+      },
+
+      setLastResponse: (response) => {
+        set({ lastResponse: response });
+      },
+
+      setError: (error) => {
+        set({ error });
+      },
+
+      setRunSensitivity: (value) => {
+        set({ runSensitivity: value });
+      },
+
+      setComparisonSpecimen: (specimen) => {
+        set({ comparisonSpecimen: specimen });
+      },
+
+      reset: () => {
+        set({
+          originalFile: null,
+          originalImageUrl: null,
+          binaryImageUrl: null,
+          result: null,
+          processing: { ...initialProcessing },
+          isAnalyzing: false,
+          selectedBoxSize: null,
+          lastResponse: null,
+          error: null,
+        });
+      },
+    }),
+    {
+      name: 'fractalvision-analyzer',
+      partialize: (state) => ({
+        result: state.result,
+        binaryImageUrl: state.binaryImageUrl,
+        lastResponse: state.lastResponse,
+        analysisMode: state.analysisMode,
+        thresholdMethod: state.thresholdMethod,
+        thresholdValue: state.thresholdValue,
+        selectedBoxSize: state.selectedBoxSize,
+        runSensitivity: state.runSensitivity,
+        comparisonSpecimen: state.comparisonSpecimen,
+      }),
+    }
+  )
+);
