@@ -7,6 +7,7 @@ import ResultCard from "@/components/analyzer/ResultCard";
 import LogLogChart from "@/components/charts/LogLogChart";
 import PipelineViewer from "@/components/analyzer/PipelineViewer";
 import BoxSizeSlider from "@/components/analyzer/BoxSizeSlider";
+import ScaleRangeSelector from "@/components/analyzer/ScaleRangeSelector";
 import PreprocessingControls from "@/components/analyzer/PreprocessingControls";
 import QualityScore from "@/components/analyzer/QualityScore";
 import ComparisonPanel from "@/components/compare/ComparisonPanel";
@@ -78,6 +79,7 @@ export default function LabPage() {
             <div className="space-y-8">
               <PipelineViewer binaryImageB64={binaryImageUrl} selectedBoxSize={selectedBoxSize} />
               <BoxSizeSlider />
+              {result && <ScaleRangeSelector />}
             </div>
 
             <div className="space-y-8">
