@@ -181,11 +181,15 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
 
   const { result } = slotState;
 
-  // ── Dynamic header label (Fix 2) ─────────────────────────────────────────
+  // ── Dynamic header label ─────────────────────────────────────────────────
   const headerLabel = (() => {
     if (slotState.sourceType === "upload" && slotState.file) {
       const name = slotState.file.name;
       return `File: ${name.length > 30 ? name.slice(0, 30) + "…" : name}`;
+    }
+    if (slotState.sourceType === "upload" && slotState.binaryImageUrl) {
+      // file was lost on refresh but result survived
+      return "Uploaded image (refreshed)";
     }
     if (slotState.sourceType === "specimen" && slotState.selectedSpecimen) {
       return `Specimen: ${slotState.selectedSpecimen.name}`;
@@ -197,6 +201,9 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
   // Group specimens by category
   const leaves = specimens.filter((s) => s.category === "leaf");
   const coastlines = specimens.filter((s) => s.category === "coastline");
+
+  // True if a file was uploaded OR if results survived a refresh (file lost but binaryImageUrl intact)
+  const hasActiveImage = !!(slotState.file || slotState.binaryImageUrl);
 
   return (
     <div className={`bg-[#0f111a] rounded-2xl border border-gray-800 ${accent.border} overflow-hidden`}>
@@ -237,8 +244,8 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
         {/* ── MODE 1: Upload ── */}
         {mode === "upload" && (
           <div className="space-y-4">
-            {/* Show drop zone when: no file loaded yet, OR user clicked Replace Image */}
-            {(!slotState.file || showDropzone) && (
+            {/* Show drop zone when: no active image, OR user clicked Replace Image */}
+            {(!hasActiveImage || showDropzone) && (
               <ImageUploader
                 onFileDrop={async (file) => {
                   setShowDropzone(false);
@@ -249,33 +256,41 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
               />
             )}
 
-            {/* Thumbnails — shown prominently once a file is loaded and drop zone is collapsed */}
-            {slotState.file && !showDropzone && (
+            {/* Thumbnails — shown prominently once an image is active and drop zone is collapsed */}
+            {hasActiveImage && !showDropzone && (
               <>
-                {slotState.originalImageUrl && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1.5">Original</p>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Original image — unavailable after refresh when file is null */}
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1.5">Original</p>
+                    {slotState.file && slotState.originalImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={slotState.originalImageUrl}
                         alt="Original upload"
                         className="w-full h-36 object-cover rounded-lg border border-gray-700"
                       />
-                    </div>
-                    {slotState.binaryImageUrl && (
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1.5">Binary mask</p>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={slotState.binaryImageUrl}
-                          alt="Binary mask"
-                          className="w-full h-36 object-cover rounded-lg border border-gray-700"
-                        />
+                    ) : (
+                      <div className="w-full h-36 rounded-lg border border-gray-700 bg-gray-900/70 flex items-center justify-center">
+                        <p className="text-[10px] text-gray-500 text-center px-2 leading-relaxed">
+                          Original image<br />unavailable after refresh
+                        </p>
                       </div>
                     )}
                   </div>
-                )}
+
+                  {slotState.binaryImageUrl && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1.5">Binary mask</p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={slotState.binaryImageUrl}
+                        alt="Binary mask"
+                        className="w-full h-36 object-cover rounded-lg border border-gray-700"
+                      />
+                    </div>
+                  )}
+                </div>
 
                 {/* Replace Image button */}
                 <button
@@ -291,8 +306,8 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
               </>
             )}
 
-            {/* Settings — shown after a file is loaded */}
-            {slotState.file && (
+            {/* Settings — shown after an image is active */}
+            {hasActiveImage && (
               <div className="space-y-4 bg-gray-900/60 rounded-xl p-4 border border-gray-700/50">
                 {/* Analysis Mode */}
                 <div>
@@ -307,6 +322,8 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
                             ? `${accent.badge} font-semibold`
                             : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-300"
                         }`}
+                        disabled={!slotState.file}
+                        title={!slotState.file ? "Re-upload image to change settings" : undefined}
                       >
                         {m === "full_mask" ? "Full Mask" : m === "boundary" ? "Boundary" : "Texture"}
                       </button>
@@ -328,6 +345,8 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
                               ? `${accent.badge} font-semibold`
                               : "border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-300"
                           }`}
+                          disabled={!slotState.file}
+                          title={!slotState.file ? "Re-upload image to change settings" : undefined}
                         >
                           {t.charAt(0).toUpperCase() + t.slice(1)}
                         </button>
@@ -349,8 +368,16 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
                       value={slotState.thresholdValue}
                       onChange={(e) => store.setSlotThresholdValue(slot, Number(e.target.value))}
                       className="w-full accent-sky-400"
+                      disabled={!slotState.file}
                     />
                   </div>
+                )}
+
+                {/* Hint when file is missing after refresh */}
+                {!slotState.file && (
+                  <p className="text-[10px] text-gray-600 italic">
+                    Settings locked — re-upload to run a new analysis.
+                  </p>
                 )}
               </div>
             )}

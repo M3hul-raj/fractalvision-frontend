@@ -6,7 +6,8 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+import type { StateStorage } from "zustand/middleware";
 import type { AnalysisResult } from "@/types/analysis";
 import type { Specimen } from "@/types/specimen";
 
@@ -44,6 +45,87 @@ const defaultSlot: SlotState = {
   analysisMode: "full_mask",
   selectedSpecimen: null,
   result: null,
+};
+
+/**
+ * Custom storage engine that routes compare slot state to the appropriate browser storage:
+ * - Settings (analysisMode, thresholdMethod, thresholdValue, sourceType, selectedSpecimen)
+ *   → localStorage  (survives tab close)
+ * - Results  (result, binaryImageUrl)
+ *   → sessionStorage (clears on tab close)
+ * File objects are never serialized.
+ */
+const splitCompareStorage: StateStorage = {
+  getItem: (name) => {
+    if (typeof window === 'undefined') return null;
+    const settingsStr = localStorage.getItem(`${name}-settings`);
+    const sessionStr = sessionStorage.getItem(`${name}-session`);
+
+    const parsedSettings = settingsStr ? JSON.parse(settingsStr) : { state: {} };
+    const parsedSession = sessionStr ? JSON.parse(sessionStr) : { state: {} };
+
+    const settingsState = parsedSettings.state ?? {};
+    const sessionState = parsedSession.state ?? {};
+
+    // Deep merge slots: settings first, then session overlays result fields
+    const mergeSlot = (key: 'A' | 'B') => ({
+      ...defaultSlot,
+      ...(settingsState[key] ?? {}),
+      ...(sessionState[key] ?? {}),
+    });
+
+    return JSON.stringify({
+      state: {
+        A: mergeSlot('A'),
+        B: mergeSlot('B'),
+      },
+      version: parsedSettings.version || 0,
+    });
+  },
+
+  setItem: (name, value) => {
+    if (typeof window === 'undefined') return;
+    const parsed = JSON.parse(value);
+    const state = parsed.state;
+
+    const pickSlotSettings = (slot: SlotState) => ({
+      sourceType: slot.sourceType,
+      thresholdMethod: slot.thresholdMethod,
+      thresholdValue: slot.thresholdValue,
+      analysisMode: slot.analysisMode,
+      selectedSpecimen: slot.selectedSpecimen,
+    });
+
+    const pickSlotSession = (slot: SlotState) => ({
+      result: slot.result,
+      binaryImageUrl: slot.binaryImageUrl,
+    });
+
+    const settingsState = {
+      A: pickSlotSettings(state.A),
+      B: pickSlotSettings(state.B),
+    };
+
+    const sessionState = {
+      A: pickSlotSession(state.A),
+      B: pickSlotSession(state.B),
+    };
+
+    localStorage.setItem(
+      `${name}-settings`,
+      JSON.stringify({ state: settingsState, version: parsed.version })
+    );
+    sessionStorage.setItem(
+      `${name}-session`,
+      JSON.stringify({ state: sessionState, version: parsed.version })
+    );
+  },
+
+  removeItem: (name) => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(`${name}-settings`);
+    sessionStorage.removeItem(`${name}-session`);
+  },
 };
 
 export interface CompareStore {
@@ -146,36 +228,8 @@ export const useCompareStore = create<CompareStore>()(
         })),
     }),
     {
-      name: 'fractalvision-compare',
-      partialize: (state) => ({
-        A: {
-          sourceType: state.A.sourceType,
-          binaryImageUrl: state.A.binaryImageUrl,
-          thresholdMethod: state.A.thresholdMethod,
-          thresholdValue: state.A.thresholdValue,
-          analysisMode: state.A.analysisMode,
-          selectedSpecimen: state.A.selectedSpecimen,
-          result: state.A.result,
-        },
-        B: {
-          sourceType: state.B.sourceType,
-          binaryImageUrl: state.B.binaryImageUrl,
-          thresholdMethod: state.B.thresholdMethod,
-          thresholdValue: state.B.thresholdValue,
-          analysisMode: state.B.analysisMode,
-          selectedSpecimen: state.B.selectedSpecimen,
-          result: state.B.result,
-        },
-      }),
-      merge: (persistedState, currentState) => {
-        const persisted = persistedState as Partial<CompareStore>;
-        return {
-          ...currentState,
-          ...persisted,
-          A: persisted?.A ? { ...currentState.A, ...persisted.A } : currentState.A,
-          B: persisted?.B ? { ...currentState.B, ...persisted.B } : currentState.B,
-        };
-      },
+      name: 'fractalvision-compare-store',
+      storage: createJSONStorage(() => splitCompareStorage),
     }
   )
 );

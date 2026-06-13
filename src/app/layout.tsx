@@ -40,9 +40,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-gray-950 text-gray-100 antialiased">
+      <body className="min-h-screen bg-gray-950 text-gray-100 antialiased flex flex-col">
         <Navbar />
-        {children}
+        <main className="flex-1">{children}</main>
         <Footer />
         <Analytics /> {/* 2. ADDED COMPONENT */}
       </body>

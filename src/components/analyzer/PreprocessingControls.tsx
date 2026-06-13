@@ -12,6 +12,10 @@ export default function PreprocessingControls() {
     setAnalysisMode,
     runSensitivity,
     setRunSensitivity,
+    blurLevel,
+    setBlurLevel,
+    denoise,
+    setDenoise,
     isAnalyzing
   } = useAnalyzerStore();
 
@@ -126,6 +130,56 @@ export default function PreprocessingControls() {
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
               ${runSensitivity && sensitivityAvailable ? "translate-x-6" : "translate-x-1"}`}
+          />
+        </button>
+      </div>
+
+      {/* Gaussian Blur Slider */}
+      <div className="mt-6 pt-5 border-t border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span className="text-sm font-semibold text-gray-300">Gaussian Blur</span>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Smooths image before thresholding. Higher = stronger blur.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 min-w-[150px]">
+          <input 
+            type="range" 
+            min="0" 
+            max="5" 
+            step="1"
+            value={blurLevel} 
+            onChange={(e) => setBlurLevel(parseInt(e.target.value, 10))}
+            className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            disabled={isAnalyzing}
+          />
+          <span className="text-sm text-blue-400 font-mono shrink-0 min-w-[50px] text-right">
+            {blurLevel === 0 ? "Off" : `Level ${blurLevel}`}
+          </span>
+        </div>
+      </div>
+
+      {/* Denoise Toggle */}
+      <div className="mt-6 pt-5 border-t border-gray-700 flex items-center justify-between">
+        <div>
+          <span className="text-sm font-semibold text-gray-300">Denoise</span>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Applies non-local means denoising before thresholding.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={denoise}
+          disabled={isAnalyzing}
+          onClick={() => !isAnalyzing && setDenoise(!denoise)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800
+            ${denoise ? "bg-blue-600" : "bg-gray-600"}
+            ${isAnalyzing ? "cursor-not-allowed" : "cursor-pointer"}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
+              ${denoise ? "translate-x-6" : "translate-x-1"}`}
           />
         </button>
       </div>

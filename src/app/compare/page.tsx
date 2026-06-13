@@ -1,12 +1,23 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import PageShell from "@/components/layout/PageShell";
 import ComparePanel from "@/components/compare/ComparePanel";
 import CompareResults from "@/components/compare/CompareResults";
 import { useCompareStore } from "@/store/compareStore";
 
 export default function ComparePage() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const { A, B } = useCompareStore();
+
+  if (!isMounted) {
+    return null;
+  }
 
   const bothReady = A.result !== null && B.result !== null;
 

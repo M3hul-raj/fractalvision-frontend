@@ -9,6 +9,8 @@ export function useAutoAnalyze() {
     thresholdValue,
     analysisMode,
     runSensitivity,
+    blurLevel,
+    denoise,
     setIsAnalyzing,
     setResult,
     setLastResponse,
@@ -25,6 +27,8 @@ export function useAutoAnalyze() {
         thresholdMethod,
         thresholdValue,
         runSensitivity,
+        blurLevel,
+        denoise,
       });
       setResult({ ...res.result, sensitivity: res.sensitivity ?? null });
       setLastResponse(res);
@@ -39,12 +43,12 @@ export function useAutoAnalyze() {
     }
   };
 
-  // Watch for thresholdMethod, analysisMode, and runSensitivity
+  // Watch for thresholdMethod, analysisMode, runSensitivity, blurLevel, denoise
   useEffect(() => {
     if (!originalFile) return;
     triggerAnalysis(originalFile);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thresholdMethod, analysisMode, runSensitivity]);
+  }, [thresholdMethod, analysisMode, runSensitivity, blurLevel, denoise]);
 
   // Watch for thresholdValue (debounced)
   useEffect(() => {

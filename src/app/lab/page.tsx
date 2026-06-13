@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageShell from "@/components/layout/PageShell";
 import ImageUploader from "@/components/analyzer/ImageUploader";
 import ResultCard from "@/components/analyzer/ResultCard";
@@ -16,10 +16,20 @@ import { useAutoAnalyze } from "@/hooks/useAutoAnalyze";
 import { analyzeImage } from "@/lib/api/client";
 
 export default function LabPage() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   useAutoAnalyze();
   const store = useAnalyzerStore();
   const { result, binaryImageUrl, selectedBoxSize, comparisonSpecimen } = store;
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  if (!isMounted) {
+    return null;
+  }
 
   const handleFileUpload = async (file: File) => {
     store.setFile(file);

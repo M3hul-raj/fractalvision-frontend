@@ -211,11 +211,12 @@ export default function MethodologyPage() {
             <Prose>
               <p>
                 <strong>Grid offsets.</strong> A known artefact of box-counting is that the result
-                depends slightly on where the grid is anchored relative to the image. FractalVision Lab
-                repeats each scale with four grid offsets (0%, 25%, 50%, and 75% of the box size) and
-                takes the <em>maximum</em> count across offsets. This reduces the grid-positioning bias
-                by ≈ 3–5% and is consistent with best-practice recommendations in the fractal geometry
-                literature.
+                depends slightly on where the grid is anchored relative to the image. To reduce this
+                grid-alignment bias, the algorithm runs box-counting at four grid offsets per box size:
+                0, 25%, 50%, and 75% of the box size. For each scale, the minimum box count across
+                all offsets is used rather than the average. This implements the tightest box cover —
+                a conservative bound that prevents overcounting caused by favorable grid placement
+                over the fractal pattern.
               </p>
             </Prose>
           </Card>
