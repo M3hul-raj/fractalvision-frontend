@@ -223,6 +223,12 @@ export default function QualityScore() {
                 <span className="text-gray-200">{standard_error.toFixed(4)}</span>
               </div>
             )}
+            <div className="flex items-baseline gap-2">
+              <span className="text-gray-400 w-20 shrink-0">Coverage</span>
+              <span className="text-gray-200">
+                {(result.foreground_ratio * 100).toFixed(1)}%
+              </span>
+            </div>
           </div>
         </div>
       )}
