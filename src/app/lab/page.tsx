@@ -5,6 +5,7 @@ import PageShell from "@/components/layout/PageShell";
 import ImageUploader from "@/components/analyzer/ImageUploader";
 import ResultCard from "@/components/analyzer/ResultCard";
 import LogLogChart from "@/components/charts/LogLogChart";
+import ResidualChart from "@/components/charts/ResidualChart";
 import PipelineViewer from "@/components/analyzer/PipelineViewer";
 import BoxSizeSlider from "@/components/analyzer/BoxSizeSlider";
 import ScaleRangeSelector from "@/components/analyzer/ScaleRangeSelector";
@@ -121,6 +122,13 @@ export default function LabPage() {
 
               {result && <ComparisonPanel />}
               <LogLogChart comparisonSpecimen={comparisonSpecimen} />
+              {result && (
+                <ResidualChart
+                  logInverseSizes={result.log_inverse_sizes}
+                  residuals={result.residuals}
+                  fractalDimension={result.fractal_dimension}
+                />
+              )}
             </div>
           </div>
         )}
