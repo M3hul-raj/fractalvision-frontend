@@ -44,6 +44,8 @@ export default function LabPage() {
         thresholdValue: store.thresholdValue,
         runSensitivity: store.runSensitivity,
         runRotationSensitivity: store.runRotationSensitivity,
+        adaptiveBlockSize: store.adaptiveBlockSize,
+        adaptiveC: store.adaptiveC,
       });
       store.setResult({
         ...res.result,

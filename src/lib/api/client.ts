@@ -19,6 +19,8 @@ export async function analyzeImage(
     gridOffsets?: string;
     runSensitivity?: boolean;
     runRotationSensitivity?: boolean;
+    adaptiveBlockSize?: number;
+    adaptiveC?: number;
   }
 ): Promise<AnalyzeApiResponse> {
   const formData = new FormData();
@@ -35,6 +37,8 @@ export async function analyzeImage(
     if (options.gridOffsets) formData.append("grid_offsets", options.gridOffsets);
     if (options.runSensitivity === true) formData.append("run_sensitivity", "true");
     if (options.runRotationSensitivity === true) formData.append("run_rotation_sensitivity", "true");
+    if (options.adaptiveBlockSize !== undefined) formData.append("adaptive_block_size", String(options.adaptiveBlockSize));
+    if (options.adaptiveC !== undefined) formData.append("adaptive_c", String(options.adaptiveC));
   }
 
   const res = await fetch(`${API_URL}/analyze`, {
@@ -43,13 +47,9 @@ export async function analyzeImage(
   });
 
   if (!res.ok) {
-    const errText = await res.text();
-    try {
-      const errJson = JSON.parse(errText);
-      throw new Error(errJson.detail || errJson.message || `Analyze failed: ${res.status}`);
-    } catch {
-      throw new Error(`Analyze failed: ${res.status} - ${errText}`);
-    }
+    const errorBody = await res.json().catch(() => null);
+    const detail = errorBody?.detail ?? `Analyze failed: ${res.status}`;
+    throw new Error(detail);
   }
   return res.json();
 }

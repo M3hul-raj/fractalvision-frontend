@@ -43,6 +43,8 @@ const splitStorage: StateStorage = {
       selectedBoxSize: state.selectedBoxSize,
       runSensitivity: state.runSensitivity,
       runRotationSensitivity: state.runRotationSensitivity,
+      adaptiveBlockSize: state.adaptiveBlockSize,
+      adaptiveC: state.adaptiveC,
       comparisonSpecimen: state.comparisonSpecimen,
     };
 
@@ -83,6 +85,8 @@ export interface AnalyzerStore {
   comparisonSpecimen: Specimen | null;
   blurLevel: number;
   denoise: boolean;
+  adaptiveBlockSize: number;
+  adaptiveC: number;
 
   // --- Actions ---
   setFile: (file: File) => void;
@@ -101,6 +105,8 @@ export interface AnalyzerStore {
   setComparisonSpecimen: (specimen: Specimen | null) => void;
   setBlurLevel: (level: number) => void;
   setDenoise: (enabled: boolean) => void;
+  setAdaptiveBlockSize: (v: number) => void;
+  setAdaptiveC: (v: number) => void;
   reset: () => void;
 }
 
@@ -139,6 +145,8 @@ export const useAnalyzerStore = create<AnalyzerStore>()(
       comparisonSpecimen: null,
       blurLevel: 0,
       denoise: false,
+      adaptiveBlockSize: 11,
+      adaptiveC: 2,
 
       // --- Actions ---
       setFile: (file: File) => {
@@ -218,6 +226,14 @@ export const useAnalyzerStore = create<AnalyzerStore>()(
 
       setDenoise: (enabled) => {
         set({ denoise: enabled });
+      },
+
+      setAdaptiveBlockSize: (v) => {
+        set({ adaptiveBlockSize: v });
+      },
+
+      setAdaptiveC: (v) => {
+        set({ adaptiveC: v });
       },
 
       reset: () => {

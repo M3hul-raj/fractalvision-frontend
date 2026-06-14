@@ -12,6 +12,8 @@ export function useAutoAnalyze() {
     runRotationSensitivity,
     blurLevel,
     denoise,
+    adaptiveBlockSize,
+    adaptiveC,
     setIsAnalyzing,
     setResult,
     setLastResponse,
@@ -31,6 +33,8 @@ export function useAutoAnalyze() {
         runRotationSensitivity,
         blurLevel,
         denoise,
+        adaptiveBlockSize,
+        adaptiveC,
       });
       setResult({
         ...res.result,
@@ -65,4 +69,14 @@ export function useAutoAnalyze() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thresholdValue]);
+
+  // Watch for adaptiveBlockSize / adaptiveC (debounced)
+  useEffect(() => {
+    if (!originalFile || thresholdMethod !== "adaptive") return;
+    const timer = setTimeout(() => {
+      triggerAnalysis(originalFile);
+    }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adaptiveBlockSize, adaptiveC]);
 }

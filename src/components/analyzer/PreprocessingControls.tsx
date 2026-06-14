@@ -18,6 +18,10 @@ export default function PreprocessingControls() {
     setDenoise,
     runRotationSensitivity,
     setRunRotationSensitivity,
+    adaptiveBlockSize,
+    setAdaptiveBlockSize,
+    adaptiveC,
+    setAdaptiveC,
     isAnalyzing
   } = useAnalyzerStore();
 
@@ -101,6 +105,49 @@ export default function PreprocessingControls() {
                   className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
                   disabled={isAnalyzing}
                 />
+              </div>
+            )}
+
+            {thresholdMethod === "adaptive" && (
+              <div className="mt-4 px-3 space-y-4">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm text-gray-300">Block Size</span>
+                    <span className="text-sm text-blue-400 font-mono">{adaptiveBlockSize}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Local neighborhood size for adaptive threshold. Must be odd.
+                  </p>
+                  <input
+                    type="range"
+                    min="7"
+                    max="51"
+                    step="2"
+                    value={adaptiveBlockSize}
+                    onChange={(e) => setAdaptiveBlockSize(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    disabled={isAnalyzing}
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-sm text-gray-300">C (Offset)</span>
+                    <span className="text-sm text-blue-400 font-mono">{adaptiveC}</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2">
+                    Constant subtracted from local mean. Higher = less foreground.
+                  </p>
+                  <input
+                    type="range"
+                    min="-10"
+                    max="20"
+                    step="1"
+                    value={adaptiveC}
+                    onChange={(e) => setAdaptiveC(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    disabled={isAnalyzing}
+                  />
+                </div>
               </div>
             )}
           </div>
