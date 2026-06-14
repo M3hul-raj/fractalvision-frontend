@@ -18,6 +18,7 @@ export async function analyzeImage(
     boxSizes?: string;
     gridOffsets?: string;
     runSensitivity?: boolean;
+    runRotationSensitivity?: boolean;
   }
 ): Promise<AnalyzeApiResponse> {
   const formData = new FormData();
@@ -33,6 +34,7 @@ export async function analyzeImage(
     if (options.boxSizes) formData.append("box_sizes", options.boxSizes);
     if (options.gridOffsets) formData.append("grid_offsets", options.gridOffsets);
     if (options.runSensitivity === true) formData.append("run_sensitivity", "true");
+    if (options.runRotationSensitivity === true) formData.append("run_rotation_sensitivity", "true");
   }
 
   const res = await fetch(`${API_URL}/analyze`, {

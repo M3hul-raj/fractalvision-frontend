@@ -42,6 +42,7 @@ const splitStorage: StateStorage = {
       thresholdValue: state.thresholdValue,
       selectedBoxSize: state.selectedBoxSize,
       runSensitivity: state.runSensitivity,
+      runRotationSensitivity: state.runRotationSensitivity,
       comparisonSpecimen: state.comparisonSpecimen,
     };
 
@@ -78,6 +79,7 @@ export interface AnalyzerStore {
   lastResponse: AnalyzeApiResponse | null;
   error: string | null;
   runSensitivity: boolean;
+  runRotationSensitivity: boolean;
   comparisonSpecimen: Specimen | null;
   blurLevel: number;
   denoise: boolean;
@@ -95,6 +97,7 @@ export interface AnalyzerStore {
   setLastResponse: (response: AnalyzeApiResponse | null) => void;
   setError: (error: string | null) => void;
   setRunSensitivity: (value: boolean) => void;
+  setRunRotationSensitivity: (value: boolean) => void;
   setComparisonSpecimen: (specimen: Specimen | null) => void;
   setBlurLevel: (level: number) => void;
   setDenoise: (enabled: boolean) => void;
@@ -132,6 +135,7 @@ export const useAnalyzerStore = create<AnalyzerStore>()(
       lastResponse: null,
       error: null,
       runSensitivity: false,
+      runRotationSensitivity: false,
       comparisonSpecimen: null,
       blurLevel: 0,
       denoise: false,
@@ -198,6 +202,10 @@ export const useAnalyzerStore = create<AnalyzerStore>()(
 
       setRunSensitivity: (value) => {
         set({ runSensitivity: value });
+      },
+
+      setRunRotationSensitivity: (value) => {
+        set({ runRotationSensitivity: value });
       },
 
       setComparisonSpecimen: (specimen) => {

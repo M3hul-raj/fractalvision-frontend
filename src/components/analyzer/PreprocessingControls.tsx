@@ -16,6 +16,8 @@ export default function PreprocessingControls() {
     setBlurLevel,
     denoise,
     setDenoise,
+    runRotationSensitivity,
+    setRunRotationSensitivity,
     isAnalyzing
   } = useAnalyzerStore();
 
@@ -180,6 +182,31 @@ export default function PreprocessingControls() {
           <span
             className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
               ${denoise ? "translate-x-6" : "translate-x-1"}`}
+          />
+        </button>
+      </div>
+
+      {/* Rotation Sensitivity Toggle */}
+      <div className="mt-6 pt-5 border-t border-gray-700 flex items-center justify-between">
+        <div>
+          <span className="text-sm font-semibold text-gray-300">Rotation Sensitivity</span>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Tests D stability across 5 rotation angles (0°–90°). Adds ~2s.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={runRotationSensitivity}
+          disabled={isAnalyzing}
+          onClick={() => !isAnalyzing && setRunRotationSensitivity(!runRotationSensitivity)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800
+            ${runRotationSensitivity ? "bg-blue-600" : "bg-gray-600"}
+            ${isAnalyzing ? "cursor-not-allowed" : "cursor-pointer"}`}
+        >
+          <span
+            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform
+              ${runRotationSensitivity ? "translate-x-6" : "translate-x-1"}`}
           />
         </button>
       </div>

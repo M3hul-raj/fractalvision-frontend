@@ -1,7 +1,7 @@
 "use client";
 
 import { useAnalyzerStore } from "@/store/analyzerStore";
-import type { SensitivityResult } from "@/types/analysis";
+import type { SensitivityResult, RotationSensitivityResult } from "@/types/analysis";
 
 // ─── Helper: arc colour by score ──────────────────────────────────────────────
 function arcColor(score: number): string {
@@ -166,17 +166,105 @@ function SensitivitySparkline({ sensitivity, fallbackD }: { sensitivity: Sensiti
   );
 }
 
+// ─── Section D2: Rotation sensitivity sparkline ─────────────────────────────
+function RotationSparkline({
+  sensitivity,
+  fallbackD,
+}: {
+  sensitivity: RotationSensitivityResult;
+  fallbackD: number;
+}) {
+  const { angles_tested, dimensions, is_stable, std_deviation } = sensitivity;
+  const allNull = dimensions.every((d) => d === null);
+  if (allNull) return null;
+
+  const center_D = dimensions[0] ?? fallbackD;
+  const window = 0.10;
+  const yMin = center_D - window;
+  const yMax = center_D + window;
+  const svgW = 120;
+  const svgH = 36;
+
+  const toY = (d: number) => {
+    const raw = ((yMax - d) / (yMax - yMin)) * svgH;
+    return Math.max(0, Math.min(svgH, raw));
+  };
+
+  const xPositions = angles_tested.map((a) => 10 + (a / 90) * 100);
+  const refY = toY(center_D);
+
+  const validPoints: { x: number; y: number; d: number }[] = [];
+  dimensions.forEach((d, i) => {
+    if (d !== null) validPoints.push({ x: xPositions[i], y: toY(d), d });
+  });
+
+  const segments: Array<[{ x: number; y: number }, { x: number; y: number }]> = [];
+  for (let i = 0; i < dimensions.length - 1; i++) {
+    const a = dimensions[i];
+    const b = dimensions[i + 1];
+    if (a !== null && b !== null) {
+      segments.push([
+        { x: xPositions[i], y: toY(a) },
+        { x: xPositions[i + 1], y: toY(b) },
+      ]);
+    }
+  }
+
+  const stableBadge = is_stable
+    ? { label: "Stable ✓", cls: "bg-green-900/60 text-green-300 border border-green-700" }
+    : { label: "Unstable ⚠", cls: "bg-amber-900/60 text-amber-300 border border-amber-700" };
+
+  return (
+    <div className="flex items-center gap-3 mt-3 flex-wrap">
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${stableBadge.cls}`}>
+        {stableBadge.label}
+      </span>
+      <svg
+        width={svgW}
+        height={svgH}
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        className="overflow-visible"
+        aria-label="Rotation sensitivity sparkline"
+      >
+        <line
+          x1={0} y1={refY} x2={svgW} y2={refY}
+          stroke="#4b5563" strokeWidth={0.75} strokeDasharray="2 2"
+        />
+        {segments.map((seg, i) => (
+          <line
+            key={i}
+            x1={seg[0].x} y1={seg[0].y}
+            x2={seg[1].x} y2={seg[1].y}
+            stroke="#6b7280" strokeWidth={1.5}
+          />
+        ))}
+        {validPoints.map((pt, i) => {
+          const deviation = Math.abs(pt.d - center_D);
+          const color = deviation <= 0.03 ? "#22c55e" : "#f59e0b";
+          return <circle key={i} cx={pt.x} cy={pt.y} r={3} fill={color} />;
+        })}
+      </svg>
+      {std_deviation !== null && (
+        <span className="text-xs text-gray-400 font-mono">
+          σ = {std_deviation.toFixed(4)}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function QualityScore() {
   const { result } = useAnalyzerStore();
 
   if (!result) return null;
 
-  const { fractal_dimension, quality_score, reliability, standard_error, confidence_interval, sensitivity } = result;
+  const { fractal_dimension, quality_score, reliability, standard_error, confidence_interval, sensitivity, rotation_sensitivity } = result;
 
   const hasQuality = quality_score != null && reliability != null;
   const hasPrecision = confidence_interval != null && confidence_interval.length === 2;
   const hasSensitivity = sensitivity != null;
+  const hasRotationSensitivity = rotation_sensitivity != null;
 
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-md space-y-6">
@@ -238,6 +326,19 @@ export default function QualityScore() {
         <div className="border-t border-gray-700 pt-4">
           <h4 className="text-sm font-semibold text-gray-300 mb-1">Threshold Sensitivity</h4>
           <SensitivitySparkline sensitivity={sensitivity!} fallbackD={fractal_dimension} />
+        </div>
+      )}
+
+      {/* Section E — Rotation Sensitivity */}
+      {hasRotationSensitivity && (
+        <div className="border-t border-gray-700 pt-4">
+          <h4 className="text-sm font-semibold text-gray-300 mb-1">
+            Rotation Sensitivity
+          </h4>
+          <RotationSparkline
+            sensitivity={rotation_sensitivity!}
+            fallbackD={fractal_dimension}
+          />
         </div>
       )}
     </div>

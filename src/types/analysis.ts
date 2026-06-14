@@ -10,6 +10,14 @@ export type SensitivityResult = {
   is_stable: boolean;
 };
 
+/** Rotation sensitivity test result returned by the backend. */
+export type RotationSensitivityResult = {
+  angles_tested: number[];
+  dimensions: (number | null)[];
+  std_deviation: number | null;
+  is_stable: boolean;
+};
+
 /** Result of a fractal dimension analysis. */
 export type AnalysisResult = {
   fractal_dimension: number;
@@ -30,6 +38,7 @@ export type AnalysisResult = {
   complexity_class: string;
   warnings: string[];
   sensitivity?: SensitivityResult | null;
+  rotation_sensitivity?: RotationSensitivityResult | null;
 };
 
 /** Current state of the image processing pipeline. */

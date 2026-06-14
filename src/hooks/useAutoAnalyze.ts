@@ -9,6 +9,7 @@ export function useAutoAnalyze() {
     thresholdValue,
     analysisMode,
     runSensitivity,
+    runRotationSensitivity,
     blurLevel,
     denoise,
     setIsAnalyzing,
@@ -27,10 +28,15 @@ export function useAutoAnalyze() {
         thresholdMethod,
         thresholdValue,
         runSensitivity,
+        runRotationSensitivity,
         blurLevel,
         denoise,
       });
-      setResult({ ...res.result, sensitivity: res.sensitivity ?? null });
+      setResult({
+        ...res.result,
+        sensitivity: res.sensitivity ?? null,
+        rotation_sensitivity: res.rotation_sensitivity ?? null,
+      });
       setLastResponse(res);
       if (res.binary_image_b64) {
         setBinaryImageUrl(`data:image/png;base64,${res.binary_image_b64}`);
@@ -48,7 +54,7 @@ export function useAutoAnalyze() {
     if (!originalFile) return;
     triggerAnalysis(originalFile);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thresholdMethod, analysisMode, runSensitivity, blurLevel, denoise]);
+  }, [thresholdMethod, analysisMode, runSensitivity, runRotationSensitivity, blurLevel, denoise]);
 
   // Watch for thresholdValue (debounced)
   useEffect(() => {

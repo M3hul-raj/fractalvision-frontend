@@ -43,8 +43,13 @@ export default function LabPage() {
         thresholdMethod: store.thresholdMethod,
         thresholdValue: store.thresholdValue,
         runSensitivity: store.runSensitivity,
+        runRotationSensitivity: store.runRotationSensitivity,
       });
-      store.setResult({ ...res.result, sensitivity: res.sensitivity ?? null });
+      store.setResult({
+        ...res.result,
+        sensitivity: res.sensitivity ?? null,
+        rotation_sensitivity: res.rotation_sensitivity ?? null,
+      });
       store.setLastResponse(res);
       if (res.binary_image_b64) {
         store.setBinaryImageUrl(`data:image/png;base64,${res.binary_image_b64}`);
