@@ -4,9 +4,10 @@ import type { Specimen } from "@/types/specimen";
 
 interface SpecimenCardProps {
   specimen: Specimen;
+  onClick?: () => void;
 }
 
-export default function SpecimenCard({ specimen }: SpecimenCardProps) {
+export default function SpecimenCard({ specimen, onClick }: SpecimenCardProps) {
   const categoryColor =
     specimen.category === "leaf"
       ? "bg-emerald-600/80 text-emerald-100"
@@ -22,7 +23,10 @@ export default function SpecimenCard({ specimen }: SpecimenCardProps) {
       : "FRACTAL";
 
   return (
-    <div className="group bg-gray-800/70 backdrop-blur-sm border border-gray-700/60 rounded-xl overflow-hidden flex flex-col transition-all duration-300 hover:border-blue-500/50 hover:shadow-[0_0_24px_rgba(59,130,246,0.15)] hover:-translate-y-0.5">
+    <div
+      onClick={onClick}
+      className={`group bg-gray-800/70 backdrop-blur-sm border border-gray-700/60 rounded-xl overflow-hidden flex flex-col transition-all duration-300 hover:border-blue-500/50 hover:shadow-[0_0_24px_rgba(59,130,246,0.15)] hover:-translate-y-0.5${onClick ? " cursor-pointer" : ""}`}
+    >
       {/* Specimen image */}
       {specimen.image_url ? (
         <img

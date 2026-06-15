@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import PageShell from "@/components/layout/PageShell";
 import SpecimenCard from "@/components/gallery/SpecimenCard";
+import SpecimenDetail from "@/components/gallery/SpecimenDetail";
 import { getSpecimens } from "@/lib/supabase/queries";
 import type { Specimen } from "@/types/specimen";
 
@@ -15,6 +16,7 @@ export default function GalleryPage() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
   const [sort, setSort] = useState<SortKey>("d_desc");
+  const [selectedSpecimen, setSelectedSpecimen] = useState<Specimen | null>(null);
 
   // Fetch all specimens once on mount
   useEffect(() => {
@@ -179,9 +181,17 @@ export default function GalleryPage() {
         {!loading && !error && displayed.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {displayed.map((specimen) => (
-              <SpecimenCard key={specimen.id} specimen={specimen} />
+              <SpecimenCard key={specimen.id} specimen={specimen} onClick={() => setSelectedSpecimen(specimen)} />
             ))}
           </div>
+        )}
+
+        {/* Specimen detail modal */}
+        {selectedSpecimen && (
+          <SpecimenDetail
+            specimen={selectedSpecimen}
+            onClose={() => setSelectedSpecimen(null)}
+          />
         )}
       </div>
     </PageShell>
