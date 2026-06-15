@@ -23,7 +23,7 @@ export default function ComparePage() {
 
   return (
     <PageShell>
-      <div className="max-w-7xl mx-auto space-y-12">
+      <div className="max-w-6xl mx-auto space-y-12">
         {/* Header */}
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-md">

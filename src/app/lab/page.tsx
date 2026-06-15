@@ -66,7 +66,7 @@ export default function LabPage() {
 
   return (
     <PageShell>
-      <div className="max-w-5xl mx-auto space-y-10">
+      <div className="max-w-6xl mx-auto space-y-10">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-md">Analyzer Lab</h1>
           <p className="mt-4 text-lg text-gray-300 max-w-2xl">

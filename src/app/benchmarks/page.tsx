@@ -143,7 +143,7 @@ export default function BenchmarksPage() {
 
   return (
     <PageShell>
-      <div className="max-w-3xl mx-auto space-y-10">
+      <div className="max-w-4xl mx-auto space-y-10">
         {/* ── Heading ── */}
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-md">

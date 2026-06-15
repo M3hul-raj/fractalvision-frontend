@@ -82,7 +82,7 @@ function InlineCode({ children }: { children: React.ReactNode }) {
 export default function LimitationsPage() {
   return (
     <PageShell>
-      <div className="max-w-4xl mx-auto space-y-16 pb-20">
+      <div className="max-w-5xl mx-auto space-y-16 pb-20">
 
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="pt-4">
@@ -136,7 +136,8 @@ export default function LimitationsPage() {
                 the theoretical value (e.g. 1.585 for Sierpiński Triangle) as the fractal structure
                 occupies a wider range of scales relative to individual pixels. Beyond iteration 6–7,
                 diminishing returns set in and aliasing noise dominates. This is why FractalVision
-                Lab imposes a maximum iteration of 6 for Sierpiński Carpet and 8 for other fractals.
+                Lab imposes per-fractal iteration caps (e.g. 6 for Sierpiński Carpet, 7 for Koch
+                variants, 8 for Sierpiński Triangle).
               </p>
             </Prose>
 
@@ -231,10 +232,12 @@ export default function LimitationsPage() {
               <div className="bg-gray-950/60 border border-gray-800 rounded-xl p-4">
                 <p className="text-sm font-semibold text-white mb-2">When adaptive threshold is better</p>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  Images with uneven illumination — e.g. leaves photographed against a textured surface,
-                  or coastline images with lighting gradients — can fool Otsu into misclassifying
-                  shadow regions as foreground. Adaptive threshold handles these cases more robustly
-                  by computing a per-pixel threshold from its local neighbourhood.
+                  For images with uneven illumination (shadows, vignetting), adaptive thresholding 
+                  computes a per-pixel threshold from the weighted average of a local 
+                  neighbourhood (Gaussian weights). The default block size is 11 px with C = 2, 
+                  but both parameters are user-adjustable via sliders in the Preprocessing 
+                  Controls panel. This suppresses lighting gradients that would confuse a 
+                  global threshold.
                 </p>
               </div>
             </div>
@@ -431,7 +434,7 @@ export default function LimitationsPage() {
                 },
               ].map((item, i) => (
                 <li key={i} className="flex gap-3 text-gray-400 text-sm leading-relaxed">
-                  <span className="shrink-0 mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 mt-2" />
+                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 mt-2" />
                   <span>{item.text}</span>
                 </li>
               ))}

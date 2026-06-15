@@ -71,7 +71,7 @@ function Tag({ children, color = "blue" }: { children: React.ReactNode; color?: 
 export default function MethodologyPage() {
   return (
     <PageShell>
-      <div className="max-w-4xl mx-auto space-y-16 pb-20">
+      <div className="max-w-5xl mx-auto space-y-16 pb-20">
 
         {/* ── Page header ─────────────────────────────────────────────────── */}
         <div className="pt-4">
@@ -337,7 +337,7 @@ export default function MethodologyPage() {
                       text: "The user provides an explicit threshold value (0–255). Pixels darker than the threshold become foreground. Useful for fine-tuning or reproducing a specific preprocessing condition.",
                     },
                   ].map((item) => (
-                    <div key={item.label} className="flex gap-3">
+                    <div key={item.label} className="flex items-start gap-3">
                       <Tag color={item.tag as "blue" | "amber" | "purple"}>{item.label}</Tag>
                       <p className="text-gray-400 text-sm leading-relaxed flex-1">{item.text}</p>
                     </div>
@@ -368,7 +368,7 @@ export default function MethodologyPage() {
                       text: "A morphological gradient (dilation − erosion, 3×3 kernel) highlights local texture transitions. This mode captures internal surface complexity and is appropriate for porous or textured materials.",
                     },
                   ].map((item) => (
-                    <div key={item.label} className="flex gap-3">
+                    <div key={item.label} className="flex items-start gap-3">
                       <Tag color={item.tag as "cyan" | "emerald" | "amber"}>{item.label}</Tag>
                       <p className="text-gray-400 text-sm leading-relaxed flex-1">{item.text}</p>
                     </div>
@@ -396,15 +396,60 @@ export default function MethodologyPage() {
               <div>
                 <p className="font-semibold text-white mb-2">Quality Score (0–100)</p>
                 <p className="text-gray-400 text-sm leading-relaxed mb-3">
-                  A composite integer score combining the R² of the regression fit and the number
-                  of box scales used. More scales provide a more robust estimate:
+                  A composite integer score that begins with the regression fit quality and
+                  applies stepwise penalties for conditions that undermine measurement reliability.
+                </p>
+
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-2 mt-5">
+                  Base Score
                 </p>
                 <MathBlock>
-                  {"score = round(R² × 80)  +  clamp(scales − 3, 0, 5) × 4"}
+                  {"base = R² × 100"}
                   <br />
-                  {"capped at 100"}
+                  {"if R² ≥ 0.999:   base += 5   (bonus for near-perfect fit)"}
+                  <br />
+                  {"if R² < 0.95:    base -= 20  (poor linearity)"}
+                  <br />
+                  {"if R² < 0.90:    base -= 20  (cumulative — very poor linearity)"}
+                  <br />
+                  {"if scales < 5:   base -= 10  (too few data points)"}
                 </MathBlock>
-                <div className="grid grid-cols-3 gap-3 mt-4">
+
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-2 mt-5">
+                  Penalty Adjustments
+                </p>
+                <div className="divide-y divide-gray-800/60 border border-gray-800 rounded-xl overflow-hidden text-sm">
+                  {[
+                    { condition: "Foreground ratio < 5%",          penalty: "−15", note: "Mask too sparse — box counts dominated by noise" },
+                    { condition: "Foreground ratio < 10%",         penalty: "−5",  note: "Somewhat sparse" },
+                    { condition: "Foreground ratio > 95%",         penalty: "−15", note: "Near-saturated — most boxes trivially occupied" },
+                    { condition: "Foreground ratio > 85%",         penalty: "−5",  note: "Somewhat dense" },
+                    { condition: "Threshold sensitivity σ > 0.10", penalty: "−20", note: "Very unstable across threshold variation" },
+                    { condition: "Threshold sensitivity σ > 0.05", penalty: "−10", note: "Unstable across threshold variation" },
+                    { condition: "Rotation sensitivity σ > 0.10",  penalty: "−15", note: "Highly orientation-dependent" },
+                    { condition: "Rotation sensitivity σ > 0.05",  penalty: "−8",  note: "Moderately orientation-dependent" },
+                  ].map((row) => (
+                    <div key={row.condition} className="flex items-baseline gap-4 px-5 py-2.5 hover:bg-gray-800/30 transition-colors">
+                      <span className="shrink-0 w-64 font-mono text-cyan-300 text-xs">{row.condition}</span>
+                      <span className="shrink-0 w-10 font-mono font-bold text-red-400 text-xs text-right">{row.penalty}</span>
+                      <span className="text-gray-500 text-xs">{row.note}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-gray-400 text-sm leading-relaxed mt-4">
+                  Foreground ratio penalties are mutually exclusive (only the first matching
+                  condition applies). Sensitivity penalties are applied only when the
+                  corresponding test was run. The final score is clamped:
+                </p>
+                <MathBlock>
+                  {"score = max(0, min(penalised_base, 100))"}
+                </MathBlock>
+
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-widest mb-2 mt-5">
+                  Reliability Bands
+                </p>
+                <div className="grid grid-cols-3 gap-3 mt-2">
                   {[
                     { range: "≥ 85", label: "High", color: "border-emerald-700/40 bg-emerald-900/10 text-emerald-300" },
                     { range: "70–84", label: "Medium", color: "border-amber-700/40 bg-amber-900/10 text-amber-300" },
