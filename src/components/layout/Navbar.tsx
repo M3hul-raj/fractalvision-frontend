@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/explorer", label: "Fractal Explorer" },
   { href: "/benchmarks", label: "Benchmarks" },
   { href: "/methodology", label: "Methodology" },
+  { href: "/coastline-paradox", label: "Coastline Paradox" },
   { href: "/limitations", label: "Limitations" },
 ] as const;
 
