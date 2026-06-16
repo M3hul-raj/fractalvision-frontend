@@ -217,7 +217,7 @@ export async function generateReport(params: {
       { label: "R\u00b2 SCORE",         value: result.r_squared.toFixed(4),        color: [21, 128, 61]  },
       {
         label: "QUALITY SCORE",
-        value: result.quality_score != null ? result.quality_score.toFixed(1) : "N/A",
+        value: result.quality_score != null ? Math.round(result.quality_score).toString() : "N/A",
         color: result.quality_score == null ? [71, 85, 105]
              : result.quality_score >= 85 ? [21, 128, 61]  // Green (matches Reliability High)
              : result.quality_score >= 70 ? [217, 119, 6]  // Amber (matches Reliability Medium)

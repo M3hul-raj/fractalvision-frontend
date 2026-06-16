@@ -17,8 +17,8 @@ export default function DualLogLogChart({ resultA, resultB }: DualLogLogChartPro
     if (!svgRef.current || !containerRef.current) return;
 
     const containerWidth = containerRef.current.getBoundingClientRect().width || 560;
-    const height = 340;
-    const margin = { top: 20, right: 24, bottom: 48, left: 56 };
+    const height = 360;
+    const margin = { top: 20, right: 24, bottom: 58, left: 56 };
     const innerWidth = containerWidth - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -72,13 +72,17 @@ export default function DualLogLogChart({ resultA, resultB }: DualLogLogChartPro
 
     xAxis.select(".domain").attr("stroke", "#374151");
     xAxis.selectAll(".tick line").attr("stroke", "#374151");
+    xAxis.selectAll(".tick text")
+      .attr("font-size", "13")
+      .attr("font-family", "Arial, sans-serif");
 
     xAxis
       .append("text")
       .attr("x", innerWidth / 2)
-      .attr("y", 40)
+      .attr("y", 44)
       .attr("fill", "#9ca3af")
-      .attr("font-size", "12")
+      .attr("font-size", "14")
+      .attr("font-family", "Arial, sans-serif")
       .text("log(1 / box size)");
 
     const yAxis = g
@@ -88,6 +92,9 @@ export default function DualLogLogChart({ resultA, resultB }: DualLogLogChartPro
 
     yAxis.select(".domain").attr("stroke", "#374151");
     yAxis.selectAll(".tick line").attr("stroke", "#374151");
+    yAxis.selectAll(".tick text")
+      .attr("font-size", "13")
+      .attr("font-family", "Arial, sans-serif");
 
     yAxis
       .append("text")
@@ -95,7 +102,8 @@ export default function DualLogLogChart({ resultA, resultB }: DualLogLogChartPro
       .attr("y", -44)
       .attr("x", -innerHeight / 2)
       .attr("fill", "#9ca3af")
-      .attr("font-size", "12")
+      .attr("font-size", "14")
+      .attr("font-family", "Arial, sans-serif")
       .attr("text-anchor", "middle")
       .text("log(count)");
 
@@ -145,7 +153,7 @@ export default function DualLogLogChart({ resultA, resultB }: DualLogLogChartPro
   }, [resultA, resultB]);
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} id="report-comparison-chart" className="w-full">
       {/* Tailwind legend */}
       <div className="flex flex-wrap gap-6 mb-4 text-sm">
         <div className="flex items-center gap-2">
@@ -167,7 +175,7 @@ export default function DualLogLogChart({ resultA, resultB }: DualLogLogChartPro
       <svg
         ref={svgRef}
         className="w-full h-auto"
-        style={{ minHeight: 340 }}
+        style={{ minHeight: 360 }}
       />
     </div>
   );
