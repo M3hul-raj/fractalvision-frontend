@@ -18,43 +18,47 @@ interface ChartPoint {
   measuredLength: number;
 }
 
-// ── Fractal coastline ─────────────────────────────────────────────────────────
+interface PrecomputedWalk {
+  rulerSize: number;
+  endpoints: [number, number][];
+  count: number;
+  measuredLength: number;
+}
+
+// ── Fractal coastline (high resolution) ───────────────────────────────────────
 //
-// Multi-frequency sinusoidal base (201 points) with 4 levels of midpoint
-// displacement subdivision.  The base sine terms create coastline features at
-// 5 different spatial frequencies (from ~200px bays down to ~8.6px inlets).
-// The subdivision adds fractal roughness at sub-3px scales.
+// Multi-frequency sinusoidal base (201 points) with 7 levels of midpoint
+// displacement.  Total: ~25,601 points.  Average segment ≈ 0.08px, which
+// supports clean zoom to ~20× before individual segments become visible.
 //
-// Total: ~3201 points.  The multi-frequency base ensures features at EVERY
-// ruler scale in the 5–100px range, giving a clean Richardson power-law.
+// The extra resolution exists purely for zoom — the walker uses all points,
+// and the visual detail revealed at high zoom is the entire point of the
+// interactive exploration.
 
 const COAST_POINTS: [number, number][] = (() => {
-  // Deterministic pseudo-random hash → [0, 1)
   function hash(x: number, level: number): number {
     const h = Math.sin(x * 127.1 + level * 311.7) * 43758.5453;
     return h - Math.floor(h);
   }
 
-  // 201-point base: 5 sine terms at different frequencies
   let pts: [number, number][] = [];
   for (let i = 0; i <= 200; i++) {
     const x = (i / 200) * 600;
     const t = i / 200;
     const y =
       100 +
-      35 * Math.sin(t * Math.PI * 3 + 0.2) +     // 1.5 full waves (~200px bays)
-      20 * Math.sin(t * Math.PI * 7 + 0.9) +      // 3.5 waves (~86px features)
-      12 * Math.sin(t * Math.PI * 16 + 1.4) +     // 8 waves (~37px features)
-      7 * Math.sin(t * Math.PI * 35 + 2.0) +      // 17.5 waves (~17px features)
-      4 * Math.sin(t * Math.PI * 70 + 0.5);       // 35 waves (~8.6px features)
+      35 * Math.sin(t * Math.PI * 3 + 0.2) +
+      20 * Math.sin(t * Math.PI * 7 + 0.9) +
+      12 * Math.sin(t * Math.PI * 16 + 1.4) +
+      7 * Math.sin(t * Math.PI * 35 + 2.0) +
+      4 * Math.sin(t * Math.PI * 70 + 0.5);
     pts.push([x, Math.max(20, Math.min(180, y))]);
   }
 
-  // 4 levels of midpoint displacement for fractal roughness at fine scales
   let amplitude = 5;
   const ROUGHNESS = 0.50;
 
-  for (let level = 0; level < 4; level++) {
+  for (let level = 0; level < 7; level++) {
     const next: [number, number][] = [pts[0]];
     for (let i = 0; i < pts.length - 1; i++) {
       const [x0, y0] = pts[i];
@@ -74,29 +78,18 @@ const COAST_POINTS: [number, number][] = (() => {
 
 // ── Walking algorithm ─────────────────────────────────────────────────────────
 
-/**
- * Walk along a polyline using a ruler of fixed Euclidean length `rulerSize`.
- *
- * At each step the ruler is a STRAIGHT LINE from the current anchor to the
- * first point on the forward polyline that is exactly `rulerSize` Euclidean
- * distance away.  Large rulers "cut corners" over bays and inlets, giving a
- * shorter total measured length.  Small rulers follow the detail, giving a
- * longer total.  This is the coastline paradox.
- */
 function walkCoastline(
   points: [number, number][],
   rulerSize: number
 ): WalkResult {
-  const endpoints: [number, number][] = [
-    [points[0][0], points[0][1]],
-  ];
+  const endpoints: [number, number][] = [[points[0][0], points[0][1]]];
 
   let anchorX = points[0][0];
   let anchorY = points[0][1];
   let segIdx = 0;
   let tAlongSeg = 0;
   let safety = 0;
-  const maxIter = 20_000;
+  const maxIter = 50_000;
 
   outer: while (segIdx < points.length - 1 && safety < maxIter) {
     safety++;
@@ -153,15 +146,6 @@ function walkCoastline(
 }
 
 // ── Power-law fit (Richardson plot) ───────────────────────────────────────────
-//
-// The compass/divider method on a finite polyline produces noisy measurements.
-// Richardson's method: fit L(r) = A · r^α to the raw data in log-log space.
-// The fitted curve is:
-//   - Guaranteed monotonically decreasing (α < 0 for fractals)
-//   - Smooth (no jumps or plateaus)
-//   - Scientifically standard (this IS how fractal dimension is estimated)
-//
-// The fractal dimension D = 1 − α.  For our coastline: D ≈ 1.17.
 
 interface FittedCurve {
   A: number;
@@ -171,7 +155,6 @@ interface FittedCurve {
 }
 
 const FITTED_CURVE: FittedCurve = (() => {
-  // Sample raw compass walks at every integer ruler size 5..100
   const logR: number[] = [];
   const logL: number[] = [];
   for (let r = 5; r <= 100; r++) {
@@ -180,12 +163,8 @@ const FITTED_CURVE: FittedCurve = (() => {
     logL.push(Math.log(walk.measuredLength));
   }
 
-  // Least-squares linear regression: logL = α·logR + logA
   const n = logR.length;
-  let sumX = 0,
-    sumY = 0,
-    sumXY = 0,
-    sumX2 = 0;
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
   for (let i = 0; i < n; i++) {
     sumX += logR[i];
     sumY += logL[i];
@@ -207,21 +186,6 @@ const FITTED_CURVE: FittedCurve = (() => {
 })();
 
 // ── Pre-computed walk data ────────────────────────────────────────────────────
-//
-// For each ruler size (step=5), we store:
-//   - The compass walk endpoints (for canvas rendering)
-//   - The segment count (from compass walk)
-//   - The fitted measured length (from power-law curve)
-//
-// The canvas draws the ACTUAL compass walk (visually accurate).
-// The stats and chart show the FITTED values (smooth, monotonic).
-
-interface PrecomputedWalk {
-  rulerSize: number;
-  endpoints: [number, number][];
-  count: number;
-  measuredLength: number; // fitted (smooth, monotonic)
-}
 
 const ALL_WALKS: PrecomputedWalk[] = (() => {
   const results: PrecomputedWalk[] = [];
@@ -241,11 +205,70 @@ const WALK_BY_RULER = new Map<number, PrecomputedWalk>(
   ALL_WALKS.map((w) => [w.rulerSize, w])
 );
 
-// ── Canvas component ──────────────────────────────────────────────────────────
+// ── Canvas constants ──────────────────────────────────────────────────────────
 
-function CoastlineCanvas({ walkData }: { walkData: PrecomputedWalk }) {
+const CANVAS_H = 340;
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 20;
+const WORLD_W = 600;
+const WORLD_H = 200;
+
+// ── Canvas component (interactive zoom/pan) ───────────────────────────────────
+//
+// Zoom: scroll wheel (centered on cursor), double-click, pinch gesture
+// Pan:  click-drag, touch-drag
+// The key educational value: when zoomed in, the user sees the fine coastline
+// detail that the straight ruler segments cut across.  This is the visual
+// proof of WHY smaller rulers measure longer.
+
+function CoastlineCanvas({
+  walkData,
+  rulerSize,
+  isFullscreen,
+}: {
+  walkData: PrecomputedWalk;
+  rulerSize: number;
+  isFullscreen: boolean;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // View state
+  const [zoom, setZoom] = useState(1);
+  const [cx, setCx] = useState(WORLD_W / 2);
+  const [cy, setCy] = useState(WORLD_H / 2);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Interaction refs (avoid re-renders during drag)
+  const dragRef = useRef({
+    active: false,
+    startMouseX: 0,
+    startMouseY: 0,
+    startCx: 0,
+    startCy: 0,
+  });
+  const pinchRef = useRef({ active: false, startDist: 0, startZoom: 1 });
+
+  // Reset view
+  const resetView = useCallback(() => {
+    setZoom(1);
+    setCx(WORLD_W / 2);
+    setCy(WORLD_H / 2);
+  }, []);
+
+  // Clamp center so some coastline is always visible
+  const clampCenter = useCallback(
+    (x: number, y: number): [number, number] => {
+      const margin = 100 / zoom;
+      return [
+        Math.max(-margin, Math.min(WORLD_W + margin, x)),
+        Math.max(-margin, Math.min(WORLD_H + margin, y)),
+      ];
+    },
+    [zoom]
+  );
+
+  // ── Draw ──────────────────────────────────────────────────────────────────
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -253,50 +276,245 @@ function CoastlineCanvas({ walkData }: { walkData: PrecomputedWalk }) {
     if (!canvas || !container) return;
 
     const W = container.getBoundingClientRect().width || 600;
-    const H = 200;
-    canvas.width = W;
-    canvas.height = H;
+    const H = isFullscreen
+      ? container.getBoundingClientRect().height || CANVAS_H
+      : CANVAS_H;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    ctx.scale(dpr, dpr);
 
-    const sx = W / 600;
+    // Pixels per world unit
+    const ppu = zoom * (W / WORLD_W);
+
+    // World-to-canvas transform
+    const w2cX = (wx: number) => (wx - cx) * ppu + W / 2;
+    const w2cY = (wy: number) => (wy - cy) * ppu + H / 2;
+
+    // Visible world bounds
+    const vLeft = cx - W / 2 / ppu;
+    const vRight = cx + W / 2 / ppu;
 
     // Background
     ctx.fillStyle = "#1e293b";
     ctx.fillRect(0, 0, W, H);
 
-    // Draw coastline path
-    ctx.beginPath();
-    ctx.moveTo(COAST_POINTS[0][0] * sx, COAST_POINTS[0][1]);
-    for (let i = 1; i < COAST_POINTS.length; i++) {
-      ctx.lineTo(COAST_POINTS[i][0] * sx, COAST_POINTS[i][1]);
+    // ── Draw coastline (only visible segment) ─────────────────────────
+    // Binary search for first visible point
+    let lo = 0, hi = COAST_POINTS.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (COAST_POINTS[mid][0] < vLeft - 5) lo = mid + 1;
+      else hi = mid;
     }
-    ctx.strokeStyle = "rgb(148, 163, 184)";
-    ctx.lineWidth = 1.5;
+    const startIdx = Math.max(0, lo - 1);
+
+    lo = 0;
+    hi = COAST_POINTS.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (COAST_POINTS[mid][0] > vRight + 5) hi = mid - 1;
+      else lo = mid;
+    }
+    const endIdx = Math.min(COAST_POINTS.length - 1, hi + 1);
+
+    ctx.beginPath();
+    ctx.moveTo(w2cX(COAST_POINTS[startIdx][0]), w2cY(COAST_POINTS[startIdx][1]));
+    for (let i = startIdx + 1; i <= endIdx; i++) {
+      ctx.lineTo(w2cX(COAST_POINTS[i][0]), w2cY(COAST_POINTS[i][1]));
+    }
+    ctx.strokeStyle = zoom > 3
+      ? "rgba(148, 163, 184, 0.7)"  // fade coastline when zoomed so rulers pop
+      : "rgb(148, 163, 184)";
+    ctx.lineWidth = zoom > 4 ? 0.8 : 1.5;
     ctx.stroke();
 
-    // Draw ruler segments from compass walk endpoints
+    // ── Draw ruler segments ───────────────────────────────────────────
     const { endpoints } = walkData;
-    ctx.globalAlpha = 0.85;
-    for (let i = 0; i < endpoints.length - 1; i++) {
-      ctx.beginPath();
-      ctx.moveTo(endpoints[i][0] * sx, endpoints[i][1]);
-      ctx.lineTo(endpoints[i + 1][0] * sx, endpoints[i + 1][1]);
-      ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+    const rulerLineW = Math.max(1.5, Math.min(3, 1.2 + zoom * 0.12));
+
+    // Glow pass (subtle shadow underneath ruler lines for contrast)
+    if (zoom > 2) {
+      ctx.globalAlpha = 0.3;
+      ctx.lineWidth = rulerLineW + 4;
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+      ctx.lineCap = "round";
+      for (let i = 0; i < endpoints.length - 1; i++) {
+        const [x0] = endpoints[i];
+        const [x1] = endpoints[i + 1];
+        if (Math.max(x0, x1) < vLeft - 20 && Math.min(x0, x1) > vRight + 20)
+          continue;
+        ctx.beginPath();
+        ctx.moveTo(w2cX(endpoints[i][0]), w2cY(endpoints[i][1]));
+        ctx.lineTo(w2cX(endpoints[i + 1][0]), w2cY(endpoints[i + 1][1]));
+        ctx.stroke();
+      }
     }
 
-    // Draw endpoint dots
-    ctx.globalAlpha = 1;
-    for (const [ex, ey] of endpoints) {
+    // Main ruler lines
+    ctx.globalAlpha = 0.9;
+    ctx.lineWidth = rulerLineW;
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineCap = "round";
+    for (let i = 0; i < endpoints.length - 1; i++) {
+      const [x0] = endpoints[i];
+      const [x1] = endpoints[i + 1];
+      if (Math.max(x0, x1) < vLeft - 20 && Math.min(x0, x1) > vRight + 20)
+        continue;
       ctx.beginPath();
-      ctx.arc(ex * sx, ey, 3, 0, Math.PI * 2);
+      ctx.moveTo(w2cX(endpoints[i][0]), w2cY(endpoints[i][1]));
+      ctx.lineTo(w2cX(endpoints[i + 1][0]), w2cY(endpoints[i + 1][1]));
+      ctx.stroke();
+    }
+    ctx.lineCap = "butt";
+
+    // ── Draw endpoint dots ────────────────────────────────────────────
+    ctx.globalAlpha = 1;
+    const dotR = Math.min(6, Math.max(3, 2.5 + zoom * 0.2));
+    for (const [ex, ey] of endpoints) {
+      if (ex < vLeft - 10 || ex > vRight + 10) continue;
+      const px = w2cX(ex);
+      const py = w2cY(ey);
+      if (px < -10 || px > W + 10 || py < -10 || py > H + 10) continue;
+
+      // Glow ring when zoomed
+      if (zoom > 2) {
+        ctx.beginPath();
+        ctx.arc(px, py, dotR + 3, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(56, 189, 248, 0.15)";
+        ctx.fill();
+      }
+
+      // White border
+      ctx.beginPath();
+      ctx.arc(px, py, dotR, 0, Math.PI * 2);
       ctx.fillStyle = "#38bdf8";
       ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth = zoom > 3 ? 1 : 0;
+      if (zoom > 3) ctx.stroke();
     }
-  }, [walkData]);
+
+    // ── Scale bar (bottom-left) ───────────────────────────────────────
+    // Shows what the current ruler size looks like at this zoom level
+    const scaleBarWorldLen = rulerSize;
+    const scaleBarCanvasPx = scaleBarWorldLen * ppu;
+    const sbX = 16;
+    const sbY = H - 22;
+
+    if (scaleBarCanvasPx > 20 && scaleBarCanvasPx < W - 40) {
+      ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+      ctx.beginPath();
+      (ctx as CanvasRenderingContext2D).roundRect(
+        sbX - 6,
+        sbY - 14,
+        scaleBarCanvasPx + 12,
+        22,
+        4
+      );
+      ctx.fill();
+
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sbX, sbY);
+      ctx.lineTo(sbX + scaleBarCanvasPx, sbY);
+      // End ticks
+      ctx.moveTo(sbX, sbY - 4);
+      ctx.lineTo(sbX, sbY + 4);
+      ctx.moveTo(sbX + scaleBarCanvasPx, sbY - 4);
+      ctx.lineTo(sbX + scaleBarCanvasPx, sbY + 4);
+      ctx.stroke();
+
+      ctx.font = "bold 10px Arial, sans-serif";
+      ctx.fillStyle = "#94a3b8";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        `${rulerSize}px ruler`,
+        sbX + scaleBarCanvasPx / 2,
+        sbY - 5
+      );
+      ctx.textAlign = "start";
+    }
+
+    // ── Zoom badge (top-right) ────────────────────────────────────────
+    if (zoom > 1.05) {
+      const badgeText = `${zoom.toFixed(1)}×`;
+      ctx.font = "bold 13px Arial, sans-serif";
+      const bw = ctx.measureText(badgeText).width + 16;
+      const bx = W - bw - 12;
+      const by = 10;
+
+      ctx.fillStyle = "rgba(15, 23, 42, 0.8)";
+      ctx.beginPath();
+      (ctx as CanvasRenderingContext2D).roundRect(bx, by, bw, 26, 5);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.fillStyle = "#38bdf8";
+      ctx.fillText(badgeText, bx + 8, by + 18);
+    }
+
+    // ── Minimap (bottom-right, only when zoomed) ──────────────────────
+    if (zoom > 1.3) {
+      const mmW = 120;
+      const mmH = 40;
+      const mmX = W - mmW - 12;
+      const mmY = H - mmH - 12;
+
+      // Background
+      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.beginPath();
+      (ctx as CanvasRenderingContext2D).roundRect(mmX - 1, mmY - 1, mmW + 2, mmH + 2, 4);
+      ctx.fill();
+
+      // Simplified coastline (every ~200th point)
+      const step = Math.max(1, Math.floor(COAST_POINTS.length / 150));
+      ctx.beginPath();
+      for (let i = 0; i < COAST_POINTS.length; i += step) {
+        const px = mmX + (COAST_POINTS[i][0] / WORLD_W) * mmW;
+        const py = mmY + (COAST_POINTS[i][1] / WORLD_H) * mmH;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.5)";
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // Viewport rectangle
+      const vpL = mmX + (vLeft / WORLD_W) * mmW;
+      const vpT = mmY + ((cy - H / 2 / ppu) / WORLD_H) * mmH;
+      const vpW = (W / ppu / WORLD_W) * mmW;
+      const vpH = (H / ppu / WORLD_H) * mmH;
+
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.9)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(
+        Math.max(mmX, vpL),
+        Math.max(mmY, vpT),
+        Math.min(vpW, mmW),
+        Math.min(vpH, mmH)
+      );
+    }
+
+    // ── Hint text (center, only before first interaction) ─────────────
+    if (!hasInteracted && zoom <= 1.05) {
+      ctx.font = "12px Arial, sans-serif";
+      ctx.fillStyle = "rgba(148, 163, 184, 0.6)";
+      ctx.textAlign = "center";
+      ctx.fillText("Scroll to zoom · Drag to pan", W / 2, H - 12);
+      ctx.textAlign = "start";
+    }
+  }, [zoom, cx, cy, walkData, rulerSize, hasInteracted, isFullscreen]);
+
+  // ── Render on state change + resize ─────────────────────────────────────
 
   useEffect(() => {
     draw();
@@ -305,13 +523,239 @@ function CoastlineCanvas({ walkData }: { walkData: PrecomputedWalk }) {
     return () => obs.disconnect();
   }, [draw]);
 
+  // ── Wheel zoom (centered on cursor) ─────────────────────────────────────
+
+  const viewRef = useRef({ zoom: 1, cx: WORLD_W / 2, cy: WORLD_H / 2 });
+  viewRef.current = { zoom, cx, cy };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    function handleWheel(e: WheelEvent) {
+      e.preventDefault();
+      setHasInteracted(true);
+
+      const rect = canvas!.getBoundingClientRect();
+      const W = rect.width;
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const v = viewRef.current;
+      const ppu = v.zoom * (W / WORLD_W);
+      const worldX = v.cx + (mouseX - W / 2) / ppu;
+      const worldY = v.cy + (mouseY - rect.height / 2) / ppu;
+
+      const factor = e.deltaY > 0 ? 0.92 : 1.09;
+      const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, v.zoom * factor));
+      const newPpu = newZoom * (W / WORLD_W);
+
+      const ncx = worldX - (mouseX - W / 2) / newPpu;
+      const ncy = worldY - (mouseY - rect.height / 2) / newPpu;
+
+      const margin = 100 / newZoom;
+      setZoom(newZoom);
+      setCx(Math.max(-margin, Math.min(WORLD_W + margin, ncx)));
+      setCy(Math.max(-margin, Math.min(WORLD_H + margin, ncy)));
+    }
+
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", handleWheel);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Mouse drag ──────────────────────────────────────────────────────────
+
+  const onMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 0) return;
+      dragRef.current = {
+        active: true,
+        startMouseX: e.clientX,
+        startMouseY: e.clientY,
+        startCx: cx,
+        startCy: cy,
+      };
+    },
+    [cx, cy]
+  );
+
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!dragRef.current.active) return;
+      setHasInteracted(true);
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const W = canvas.getBoundingClientRect().width;
+      const ppu = viewRef.current.zoom * (W / WORLD_W);
+
+      const dx = e.clientX - dragRef.current.startMouseX;
+      const dy = e.clientY - dragRef.current.startMouseY;
+
+      const ncx = dragRef.current.startCx - dx / ppu;
+      const ncy = dragRef.current.startCy - dy / ppu;
+
+      const margin = 100 / viewRef.current.zoom;
+      setCx(Math.max(-margin, Math.min(WORLD_W + margin, ncx)));
+      setCy(Math.max(-margin, Math.min(WORLD_H + margin, ncy)));
+    }
+
+    function onMouseUp() {
+      dragRef.current.active = false;
+    }
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Double-click zoom ───────────────────────────────────────────────────
+
+  const onDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      setHasInteracted(true);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const W = rect.width;
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const ppu = zoom * (W / WORLD_W);
+      const worldX = cx + (mouseX - W / 2) / ppu;
+      const worldY = cy + (mouseY - rect.height / 2) / ppu;
+
+      const newZoom = e.shiftKey
+        ? Math.max(MIN_ZOOM, zoom / 2)
+        : Math.min(MAX_ZOOM, zoom * 2);
+      const newPpu = newZoom * (W / WORLD_W);
+
+      const ncx = worldX - (mouseX - W / 2) / newPpu;
+      const ncy = worldY - (mouseY - rect.height / 2) / newPpu;
+
+      const margin = 100 / newZoom;
+      setZoom(newZoom);
+      setCx(Math.max(-margin, Math.min(WORLD_W + margin, ncx)));
+      setCy(Math.max(-margin, Math.min(WORLD_H + margin, ncy)));
+    },
+    [zoom, cx, cy]
+  );
+
+  // ── Touch support (pinch zoom + drag pan) ───────────────────────────────
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    function getTouchDist(e: TouchEvent) {
+      const t0 = e.touches[0];
+      const t1 = e.touches[1];
+      return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    }
+
+    function onTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        pinchRef.current = {
+          active: true,
+          startDist: getTouchDist(e),
+          startZoom: viewRef.current.zoom,
+        };
+      } else if (e.touches.length === 1) {
+        const t = e.touches[0];
+        dragRef.current = {
+          active: true,
+          startMouseX: t.clientX,
+          startMouseY: t.clientY,
+          startCx: viewRef.current.cx,
+          startCy: viewRef.current.cy,
+        };
+      }
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (pinchRef.current.active && e.touches.length === 2) {
+        e.preventDefault();
+        setHasInteracted(true);
+        const dist = getTouchDist(e);
+        const newZoom = Math.max(
+          MIN_ZOOM,
+          Math.min(MAX_ZOOM, pinchRef.current.startZoom * (dist / pinchRef.current.startDist))
+        );
+        setZoom(newZoom);
+      } else if (dragRef.current.active && e.touches.length === 1) {
+        e.preventDefault();
+        setHasInteracted(true);
+        const t = e.touches[0];
+        const W = canvas!.getBoundingClientRect().width;
+        const ppu = viewRef.current.zoom * (W / WORLD_W);
+
+        const dx = t.clientX - dragRef.current.startMouseX;
+        const dy = t.clientY - dragRef.current.startMouseY;
+
+        const ncx = dragRef.current.startCx - dx / ppu;
+        const ncy = dragRef.current.startCy - dy / ppu;
+
+        const margin = 100 / viewRef.current.zoom;
+        setCx(Math.max(-margin, Math.min(WORLD_W + margin, ncx)));
+        setCy(Math.max(-margin, Math.min(WORLD_H + margin, ncy)));
+      }
+    }
+
+    function onTouchEnd() {
+      pinchRef.current.active = false;
+      dragRef.current.active = false;
+    }
+
+    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd);
+    return () => {
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Cursor style ────────────────────────────────────────────────────────
+
+  const cursorStyle = dragRef.current.active ? "grabbing" : "grab";
+
   return (
-    <div ref={containerRef} className="w-full">
-      <canvas
-        ref={canvasRef}
-        className="w-full rounded-lg"
-        style={{ height: 200 }}
-      />
+    <div className="relative" style={isFullscreen ? { flex: 1, display: "flex", flexDirection: "column" } : undefined}>
+      <div ref={containerRef} className="w-full" style={isFullscreen ? { flex: 1 } : undefined}>
+        <canvas
+          ref={canvasRef}
+          className="w-full rounded-lg select-none"
+          style={{
+            height: isFullscreen ? "100%" : CANVAS_H,
+            cursor: cursorStyle,
+            border:
+              zoom > 1.05
+                ? "1px solid rgba(56, 189, 248, 0.25)"
+                : "1px solid transparent",
+          }}
+          onMouseDown={onMouseDown}
+          onDoubleClick={onDoubleClick}
+        />
+      </div>
+
+      {/* Reset button (visible when zoomed) */}
+      {zoom > 1.05 && (
+        <button
+          onClick={resetView}
+          className="absolute top-3 left-3 px-2.5 py-1 text-[11px] font-semibold
+                     bg-slate-900/80 text-sky-400 border border-sky-500/30
+                     rounded-md hover:bg-slate-800/90 hover:border-sky-400/50
+                     transition-colors backdrop-blur-sm"
+        >
+          Reset View
+        </button>
+      )}
     </div>
   );
 }
@@ -333,7 +777,7 @@ function LengthChart({
     if (!svgRef.current || !containerRef.current || data.length === 0) return;
 
     const W = containerRef.current.getBoundingClientRect().width || 600;
-    const H = 220;
+    const H = 340;
     const margin = { top: 20, right: 30, bottom: 45, left: 60 };
     const iW = W - margin.left - margin.right;
     const iH = H - margin.top - margin.bottom;
@@ -408,7 +852,7 @@ function LengthChart({
       .call(
         d3
           .axisLeft(y)
-          .ticks(6)
+          .ticks(8)
           .tickFormat((d) => `${Math.round(d as number)}`)
       );
 
@@ -479,7 +923,7 @@ function LengthChart({
     if (!svgRef.current || !containerRef.current || data.length === 0) return;
 
     const W = containerRef.current.getBoundingClientRect().width || 600;
-    const H = 220;
+    const H = 340;
     const margin = { top: 20, right: 30, bottom: 45, left: 60 };
     const iW = W - margin.left - margin.right;
     const iH = H - margin.top - margin.bottom;
@@ -519,6 +963,8 @@ function LengthChart({
 
 export default function CoastlineParadoxPage() {
   const [rulerSize, setRulerSize] = useState(30);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const demoSectionRef = useRef<HTMLDivElement>(null);
 
   const currentWalk = useMemo(() => {
     return WALK_BY_RULER.get(rulerSize) ?? ALL_WALKS[0];
@@ -529,6 +975,25 @@ export default function CoastlineParadoxPage() {
       rulerSize: w.rulerSize,
       measuredLength: w.measuredLength,
     }));
+  }, []);
+
+  // Fullscreen toggle
+  const toggleFullscreen = useCallback(() => {
+    if (!demoSectionRef.current) return;
+    if (!document.fullscreenElement) {
+      demoSectionRef.current.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+
+  // Sync fullscreen state
+  useEffect(() => {
+    function onFsChange() {
+      setIsFullscreen(!!document.fullscreenElement);
+    }
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
   return (
@@ -574,11 +1039,46 @@ export default function CoastlineParadoxPage() {
 
         {/* ── Interactive ruler demo ───────────────────────────── */}
         <section id="ruler-demo">
-          <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 md:p-8">
-            <h2 className="text-xl font-bold text-white flex items-center gap-3 mb-6">
-              <span className="inline-block w-1 h-6 rounded-full bg-gradient-to-b from-sky-400 to-blue-500 shrink-0" />
-              Interactive Ruler Demo
-            </h2>
+          <div
+            ref={demoSectionRef}
+            className={`border rounded-2xl p-6 md:p-8 ${
+              isFullscreen
+                ? "bg-gray-950 border-gray-700 flex flex-col"
+                : "bg-gray-900/60 border-gray-800"
+            }`}
+            style={isFullscreen ? { height: "100vh" } : undefined}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                <span className="inline-block w-1 h-6 rounded-full bg-gradient-to-b from-sky-400 to-blue-500 shrink-0" />
+                Interactive Ruler Demo
+              </h2>
+              <button
+                onClick={toggleFullscreen}
+                title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                className="p-2 rounded-lg border border-gray-700 hover:border-sky-500/50
+                           hover:bg-sky-500/10 text-gray-400 hover:text-sky-400
+                           transition-all duration-200"
+              >
+                {isFullscreen ? (
+                  /* Minimize icon (compress) */
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="4 14 10 14 10 20" />
+                    <polyline points="20 10 14 10 14 4" />
+                    <line x1="14" y1="10" x2="21" y2="3" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                ) : (
+                  /* Maximize icon (expand) */
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 3 21 3 21 9" />
+                    <polyline points="9 21 3 21 3 15" />
+                    <line x1="21" y1="3" x2="14" y2="10" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                )}
+              </button>
+            </div>
 
             {/* Slider */}
             <div className="mb-5 flex flex-col sm:flex-row sm:items-center gap-3">
@@ -607,7 +1107,7 @@ export default function CoastlineParadoxPage() {
             </div>
 
             {/* Canvas */}
-            <CoastlineCanvas walkData={currentWalk} />
+            <CoastlineCanvas walkData={currentWalk} rulerSize={rulerSize} isFullscreen={isFullscreen} />
 
             {/* Stats */}
             <div className="mt-4 flex flex-wrap gap-6 text-sm">
