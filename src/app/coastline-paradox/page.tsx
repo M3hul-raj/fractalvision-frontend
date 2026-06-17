@@ -998,7 +998,7 @@ export default function CoastlineParadoxPage() {
 
   return (
     <PageShell>
-      <div className="max-w-4xl mx-auto space-y-12 pb-20">
+      <div className="max-w-5xl mx-auto space-y-12 pb-20">
         {/* ── Page header ──────────────────────────────────────── */}
         <div className="pt-4">
           <p className="text-xs font-semibold tracking-[0.2em] text-blue-400/80 uppercase mb-3">
