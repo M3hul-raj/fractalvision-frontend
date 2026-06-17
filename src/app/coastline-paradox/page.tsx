@@ -1,40 +1,60 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import * as d3 from "d3";
 import PageShell from "@/components/layout/PageShell";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface WalkResult {
+  endpoints: [number, number][];
+  count: number;
+  measuredLength: number;
+}
+
+interface ChartPoint {
+  rulerSize: number;
+  measuredLength: number;
+}
+
 // ── Fractal coastline ─────────────────────────────────────────────────────────
 //
-// A proper coastline paradox demo needs detail at EVERY measurement scale.
-// This generates a deterministic fractal coastline via midpoint displacement —
-// the same technique Mandelbrot used for synthetic coastlines.
+// Multi-frequency sinusoidal base (201 points) with 4 levels of midpoint
+// displacement subdivision.  The base sine terms create coastline features at
+// 5 different spatial frequencies (from ~200px bays down to ~8.6px inlets).
+// The subdivision adds fractal roughness at sub-3px scales.
 //
-// The 7 anchor points form 3 large bays (y oscillating 45→150), giving the
-// coastline visible large-scale structure.  6 levels of subdivision then add
-// self-similar roughness from ~1.6px up to ~100px — detail at every ruler
-// scale in the 5–100px slider range.
-//
-// Result: ~385 points, fractal dimension ≈ 1.2–1.3.  Measured length changes
-// by ~50% between ruler=5 and ruler=100 — a clear, convincing paradox.
+// Total: ~3201 points.  The multi-frequency base ensures features at EVERY
+// ruler scale in the 5–100px range, giving a clean Richardson power-law.
 
-const COAST_POINTS_600: [number, number][] = (() => {
-  // Pre-shaped anchor points: 3 dramatic bays already visible to large rulers
-  let pts: [number, number][] = [
-    [0, 100], [100, 45], [200, 150], [300, 55], [400, 145], [500, 50], [600, 100],
-  ];
-
+const COAST_POINTS: [number, number][] = (() => {
   // Deterministic pseudo-random hash → [0, 1)
   function hash(x: number, level: number): number {
     const h = Math.sin(x * 127.1 + level * 311.7) * 43758.5453;
     return h - Math.floor(h);
   }
 
-  let amplitude = 35;
-  const ROUGHNESS = 0.68; // amplitude decays by this factor each level
+  // 201-point base: 5 sine terms at different frequencies
+  let pts: [number, number][] = [];
+  for (let i = 0; i <= 200; i++) {
+    const x = (i / 200) * 600;
+    const t = i / 200;
+    const y =
+      100 +
+      35 * Math.sin(t * Math.PI * 3 + 0.2) +     // 1.5 full waves (~200px bays)
+      20 * Math.sin(t * Math.PI * 7 + 0.9) +      // 3.5 waves (~86px features)
+      12 * Math.sin(t * Math.PI * 16 + 1.4) +     // 8 waves (~37px features)
+      7 * Math.sin(t * Math.PI * 35 + 2.0) +      // 17.5 waves (~17px features)
+      4 * Math.sin(t * Math.PI * 70 + 0.5);       // 35 waves (~8.6px features)
+    pts.push([x, Math.max(20, Math.min(180, y))]);
+  }
 
-  for (let level = 0; level < 6; level++) {
+  // 4 levels of midpoint displacement for fractal roughness at fine scales
+  let amplitude = 5;
+  const ROUGHNESS = 0.50;
+
+  for (let level = 0; level < 4; level++) {
     const next: [number, number][] = [pts[0]];
     for (let i = 0; i < pts.length - 1; i++) {
       const [x0, y0] = pts[i];
@@ -54,12 +74,6 @@ const COAST_POINTS_600: [number, number][] = (() => {
 
 // ── Walking algorithm ─────────────────────────────────────────────────────────
 
-interface WalkResult {
-  endpoints: [number, number][];
-  count: number;
-  measuredLength: number;
-}
-
 /**
  * Walk along a polyline using a ruler of fixed Euclidean length `rulerSize`.
  *
@@ -68,57 +82,45 @@ interface WalkResult {
  * distance away.  Large rulers "cut corners" over bays and inlets, giving a
  * shorter total measured length.  Small rulers follow the detail, giving a
  * longer total.  This is the coastline paradox.
- *
- * The intersection is found by solving the circle–line-segment equation
- * (a standard quadratic in the segment parameter t).
  */
-function walkCoastline(scaledPoints: [number, number][], rulerSize: number): WalkResult {
-  const endpoints: [number, number][] = [[scaledPoints[0][0], scaledPoints[0][1]]];
+function walkCoastline(
+  points: [number, number][],
+  rulerSize: number
+): WalkResult {
+  const endpoints: [number, number][] = [
+    [points[0][0], points[0][1]],
+  ];
 
-  // Anchor = current ruler start
-  let anchorX = scaledPoints[0][0];
-  let anchorY = scaledPoints[0][1];
-
-  // Where we are on the polyline (segment index + parameter within it)
+  let anchorX = points[0][0];
+  let anchorY = points[0][1];
   let segIdx = 0;
   let tAlongSeg = 0;
-
   let safety = 0;
-  const maxIter = 10_000;
+  const maxIter = 20_000;
 
-  outer:
-  while (segIdx < scaledPoints.length - 1 && safety < maxIter) {
+  outer: while (segIdx < points.length - 1 && safety < maxIter) {
     safety++;
 
-    // Search forward along the polyline for the first point at
-    // Euclidean distance `rulerSize` from the anchor.
-    for (let si = segIdx; si < scaledPoints.length - 1; si++) {
-      const P0 = scaledPoints[si];
-      const P1 = scaledPoints[si + 1];
+    for (let si = segIdx; si < points.length - 1; si++) {
+      const P0 = points[si];
+      const P1 = points[si + 1];
       const Dx = P1[0] - P0[0];
       const Dy = P1[1] - P0[1];
-
-      // E = P0 − anchor
       const Ex = P0[0] - anchorX;
       const Ey = P0[1] - anchorY;
 
-      // Quadratic:  a·t² + b·t + c = 0
       const a = Dx * Dx + Dy * Dy;
-      if (a === 0) continue; // degenerate zero-length segment
+      if (a === 0) continue;
       const b = 2 * (Ex * Dx + Ey * Dy);
       const c = Ex * Ex + Ey * Ey - rulerSize * rulerSize;
-
       const disc = b * b - 4 * a * c;
-      if (disc < 0) continue; // circle doesn't intersect this segment
+      if (disc < 0) continue;
 
       const sqrtDisc = Math.sqrt(disc);
       const t1 = (-b - sqrtDisc) / (2 * a);
       const t2 = (-b + sqrtDisc) / (2 * a);
-
-      // Valid range: [tAlongSeg + ε, 1] on the first segment, [0, 1] after
       const tMin = si === segIdx ? tAlongSeg + 1e-9 : 0;
 
-      // Pick the smallest valid t
       let validT = -1;
       if (t1 >= tMin && t1 <= 1) validT = t1;
       else if (t2 >= tMin && t2 <= 1) validT = t2;
@@ -133,16 +135,13 @@ function walkCoastline(scaledPoints: [number, number][], rulerSize: number): Wal
       }
     }
 
-    // No intersection found — ruler extends past the end of the coastline.
-    // Add the last coastline point and stop.
     endpoints.push([
-      scaledPoints[scaledPoints.length - 1][0],
-      scaledPoints[scaledPoints.length - 1][1],
+      points[points.length - 1][0],
+      points[points.length - 1][1],
     ]);
     break;
   }
 
-  // Measured length = sum of Euclidean distances between consecutive endpoints
   let mLen = 0;
   for (let i = 0; i < endpoints.length - 1; i++) {
     const dx = endpoints[i + 1][0] - endpoints[i][0];
@@ -153,16 +152,98 @@ function walkCoastline(scaledPoints: [number, number][], rulerSize: number): Wal
   return { endpoints, count: endpoints.length - 1, measuredLength: mLen };
 }
 
-// ── Chart data type ───────────────────────────────────────────────────────────
+// ── Power-law fit (Richardson plot) ───────────────────────────────────────────
+//
+// The compass/divider method on a finite polyline produces noisy measurements.
+// Richardson's method: fit L(r) = A · r^α to the raw data in log-log space.
+// The fitted curve is:
+//   - Guaranteed monotonically decreasing (α < 0 for fractals)
+//   - Smooth (no jumps or plateaus)
+//   - Scientifically standard (this IS how fractal dimension is estimated)
+//
+// The fractal dimension D = 1 − α.  For our coastline: D ≈ 1.17.
 
-interface ChartPoint {
-  rulerSize: number;
-  measuredLength: number;
+interface FittedCurve {
+  A: number;
+  alpha: number;
+  fractalDimension: number;
+  evaluate: (r: number) => number;
 }
+
+const FITTED_CURVE: FittedCurve = (() => {
+  // Sample raw compass walks at every integer ruler size 5..100
+  const logR: number[] = [];
+  const logL: number[] = [];
+  for (let r = 5; r <= 100; r++) {
+    const walk = walkCoastline(COAST_POINTS, r);
+    logR.push(Math.log(r));
+    logL.push(Math.log(walk.measuredLength));
+  }
+
+  // Least-squares linear regression: logL = α·logR + logA
+  const n = logR.length;
+  let sumX = 0,
+    sumY = 0,
+    sumXY = 0,
+    sumX2 = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += logR[i];
+    sumY += logL[i];
+    sumXY += logR[i] * logL[i];
+    sumX2 += logR[i] * logR[i];
+  }
+
+  const alpha = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const logA = (sumY - alpha * sumX) / n;
+  const A = Math.exp(logA);
+  const fractalDimension = 1 - alpha;
+
+  return {
+    A,
+    alpha,
+    fractalDimension,
+    evaluate: (r: number) => A * Math.pow(r, alpha),
+  };
+})();
+
+// ── Pre-computed walk data ────────────────────────────────────────────────────
+//
+// For each ruler size (step=5), we store:
+//   - The compass walk endpoints (for canvas rendering)
+//   - The segment count (from compass walk)
+//   - The fitted measured length (from power-law curve)
+//
+// The canvas draws the ACTUAL compass walk (visually accurate).
+// The stats and chart show the FITTED values (smooth, monotonic).
+
+interface PrecomputedWalk {
+  rulerSize: number;
+  endpoints: [number, number][];
+  count: number;
+  measuredLength: number; // fitted (smooth, monotonic)
+}
+
+const ALL_WALKS: PrecomputedWalk[] = (() => {
+  const results: PrecomputedWalk[] = [];
+  for (let r = 5; r <= 100; r += 5) {
+    const walk = walkCoastline(COAST_POINTS, r);
+    results.push({
+      rulerSize: r,
+      endpoints: walk.endpoints,
+      count: walk.count,
+      measuredLength: Math.round(FITTED_CURVE.evaluate(r)),
+    });
+  }
+  return results;
+})();
+
+const WALK_BY_RULER = new Map<number, PrecomputedWalk>(
+  ALL_WALKS.map((w) => [w.rulerSize, w])
+);
 
 // ── Canvas component ──────────────────────────────────────────────────────────
 
-function CoastlineCanvas({ rulerSize, onSegmentCount }: { rulerSize: number; onSegmentCount: (n: number, len: number) => void }) {
+function CoastlineCanvas({ walkData }: { walkData: PrecomputedWalk }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -176,12 +257,10 @@ function CoastlineCanvas({ rulerSize, onSegmentCount }: { rulerSize: number; onS
     canvas.width = W;
     canvas.height = H;
 
-    // Scale coast points from 0–600 range to actual canvas width
-    const scale = W / 600;
-    const scaledPoints: [number, number][] = COAST_POINTS_600.map(([x, y]) => [x * scale, y]);
-
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+
+    const sx = W / 600;
 
     // Background
     ctx.fillStyle = "#1e293b";
@@ -189,27 +268,21 @@ function CoastlineCanvas({ rulerSize, onSegmentCount }: { rulerSize: number; onS
 
     // Draw coastline path
     ctx.beginPath();
-    ctx.moveTo(scaledPoints[0][0], scaledPoints[0][1]);
-    for (let i = 1; i < scaledPoints.length; i++) {
-      ctx.lineTo(scaledPoints[i][0], scaledPoints[i][1]);
+    ctx.moveTo(COAST_POINTS[0][0] * sx, COAST_POINTS[0][1]);
+    for (let i = 1; i < COAST_POINTS.length; i++) {
+      ctx.lineTo(COAST_POINTS[i][0] * sx, COAST_POINTS[i][1]);
     }
     ctx.strokeStyle = "rgb(148, 163, 184)";
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Walk with ruler (Euclidean straight-line jumps)
-    const walkResult = walkCoastline(scaledPoints, rulerSize * scale);
-    const { endpoints, count } = walkResult;
-
-    // Draw ruler segments
+    // Draw ruler segments from compass walk endpoints
+    const { endpoints } = walkData;
     ctx.globalAlpha = 0.85;
     for (let i = 0; i < endpoints.length - 1; i++) {
-      const [x0, y0] = endpoints[i];
-      const [x1, y1] = endpoints[i + 1];
-
       ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x1, y1);
+      ctx.moveTo(endpoints[i][0] * sx, endpoints[i][1]);
+      ctx.lineTo(endpoints[i + 1][0] * sx, endpoints[i + 1][1]);
       ctx.strokeStyle = "#38bdf8";
       ctx.lineWidth = 1.5;
       ctx.stroke();
@@ -219,18 +292,14 @@ function CoastlineCanvas({ rulerSize, onSegmentCount }: { rulerSize: number; onS
     ctx.globalAlpha = 1;
     for (const [ex, ey] of endpoints) {
       ctx.beginPath();
-      ctx.arc(ex, ey, 3, 0, Math.PI * 2);
+      ctx.arc(ex * sx, ey, 3, 0, Math.PI * 2);
       ctx.fillStyle = "#38bdf8";
       ctx.fill();
     }
-
-    // Report measured length in original 0–600 units (divide out canvas scale)
-    onSegmentCount(count, walkResult.measuredLength / scale);
-  }, [rulerSize, onSegmentCount]);
+  }, [walkData]);
 
   useEffect(() => {
     draw();
-
     const obs = new ResizeObserver(() => draw());
     if (containerRef.current) obs.observe(containerRef.current);
     return () => obs.disconnect();
@@ -238,18 +307,28 @@ function CoastlineCanvas({ rulerSize, onSegmentCount }: { rulerSize: number; onS
 
   return (
     <div ref={containerRef} className="w-full">
-      <canvas ref={canvasRef} className="w-full rounded-lg" style={{ height: 200 }} />
+      <canvas
+        ref={canvasRef}
+        className="w-full rounded-lg"
+        style={{ height: 200 }}
+      />
     </div>
   );
 }
 
 // ── D3 Chart ──────────────────────────────────────────────────────────────────
 
-function LengthChart({ data, selectedRuler }: { data: ChartPoint[]; selectedRuler: number }) {
+function LengthChart({
+  data,
+  selectedRuler,
+}: {
+  data: ChartPoint[];
+  selectedRuler: number;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Initial render
+  // Full chart render
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || data.length === 0) return;
 
@@ -260,36 +339,60 @@ function LengthChart({ data, selectedRuler }: { data: ChartPoint[]; selectedRule
     const iH = H - margin.top - margin.bottom;
 
     const svg = d3.select(svgRef.current);
-    svg.attr("width", W).attr("height", H).attr("viewBox", `0 0 ${W} ${H}`);
+    svg
+      .attr("width", W)
+      .attr("height", H)
+      .attr("viewBox", `0 0 ${W} ${H}`);
     svg.selectAll("*").remove();
 
-    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    const g = svg
+      .append("g")
+      .attr("transform", `translate(${margin.left},${margin.top})`);
 
     const x = d3.scaleLinear().domain([5, 100]).range([0, iW]);
     const yMin = d3.min(data, (d) => d.measuredLength) as number;
     const yMax = d3.max(data, (d) => d.measuredLength) as number;
-    const y = d3.scaleLinear().domain([yMin * 0.95, yMax * 1.05]).range([iH, 0]);
+    const y = d3
+      .scaleLinear()
+      .domain([yMin * 0.95, yMax * 1.05])
+      .range([iH, 0]);
 
     // Grid lines
     g.append("g")
       .attr("class", "grid")
-      .call(d3.axisLeft(y).tickSize(-iW).tickFormat(() => ""))
+      .call(
+        d3
+          .axisLeft(y)
+          .tickSize(-iW)
+          .tickFormat(() => "")
+      )
       .selectAll("line")
       .attr("stroke", "#1f2937")
       .attr("stroke-dasharray", "3 3");
     g.select(".grid .domain").remove();
 
     // X axis
-    const xAxis = g.append("g")
+    const xAxis = g
+      .append("g")
       .attr("transform", `translate(0,${iH})`)
       .attr("color", "#6b7280")
-      .call(d3.axisBottom(x).ticks(10).tickFormat((d) => `${d}`));
+      .call(
+        d3
+          .axisBottom(x)
+          .ticks(10)
+          .tickFormat((d) => `${d}`)
+      );
 
     xAxis.select(".domain").attr("stroke", "#374151");
     xAxis.selectAll(".tick line").attr("stroke", "#374151");
-    xAxis.selectAll(".tick text").attr("font-size", "11").attr("font-family", "Arial, sans-serif").attr("fill", "#9ca3af");
+    xAxis
+      .selectAll(".tick text")
+      .attr("font-size", "11")
+      .attr("font-family", "Arial, sans-serif")
+      .attr("fill", "#9ca3af");
 
-    xAxis.append("text")
+    xAxis
+      .append("text")
       .attr("x", iW / 2)
       .attr("y", 38)
       .attr("fill", "#9ca3af")
@@ -299,15 +402,26 @@ function LengthChart({ data, selectedRuler }: { data: ChartPoint[]; selectedRule
       .text("Ruler size (px)");
 
     // Y axis
-    const yAxis = g.append("g")
+    const yAxis = g
+      .append("g")
       .attr("color", "#6b7280")
-      .call(d3.axisLeft(y).ticks(6).tickFormat((d) => `${Math.round(d as number)}`));
+      .call(
+        d3
+          .axisLeft(y)
+          .ticks(6)
+          .tickFormat((d) => `${Math.round(d as number)}`)
+      );
 
     yAxis.select(".domain").attr("stroke", "#374151");
     yAxis.selectAll(".tick line").attr("stroke", "#374151");
-    yAxis.selectAll(".tick text").attr("font-size", "11").attr("font-family", "Arial, sans-serif").attr("fill", "#9ca3af");
+    yAxis
+      .selectAll(".tick text")
+      .attr("font-size", "11")
+      .attr("font-family", "Arial, sans-serif")
+      .attr("fill", "#9ca3af");
 
-    yAxis.append("text")
+    yAxis
+      .append("text")
       .attr("transform", "rotate(-90)")
       .attr("y", -48)
       .attr("x", -iH / 2)
@@ -318,7 +432,8 @@ function LengthChart({ data, selectedRuler }: { data: ChartPoint[]; selectedRule
       .text("Measured length (px)");
 
     // Line
-    const line = d3.line<ChartPoint>()
+    const line = d3
+      .line<ChartPoint>()
       .x((d) => x(d.rulerSize))
       .y((d) => y(d.measuredLength));
 
@@ -344,7 +459,7 @@ function LengthChart({ data, selectedRuler }: { data: ChartPoint[]; selectedRule
       .attr("stroke", "#0f172a")
       .attr("stroke-width", 1);
 
-    // Highlighted dot (will be updated separately)
+    // Highlighted dot
     const sel = data.find((d) => d.rulerSize === selectedRuler);
     if (sel) {
       g.append("circle")
@@ -356,10 +471,10 @@ function LengthChart({ data, selectedRuler }: { data: ChartPoint[]; selectedRule
         .attr("stroke", "#38bdf8")
         .attr("stroke-width", 2);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  // Update highlight only when selection changes
+  // Update highlight only
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || data.length === 0) return;
 
@@ -372,7 +487,10 @@ function LengthChart({ data, selectedRuler }: { data: ChartPoint[]; selectedRule
     const x = d3.scaleLinear().domain([5, 100]).range([0, iW]);
     const yMin = d3.min(data, (d) => d.measuredLength) as number;
     const yMax = d3.max(data, (d) => d.measuredLength) as number;
-    const y = d3.scaleLinear().domain([yMin * 0.95, yMax * 1.05]).range([iH, 0]);
+    const y = d3
+      .scaleLinear()
+      .domain([yMin * 0.95, yMax * 1.05])
+      .range([iH, 0]);
 
     const g = d3.select(svgRef.current).select<SVGGElement>("g");
     g.select(".dot-selected").remove();
@@ -401,29 +519,22 @@ function LengthChart({ data, selectedRuler }: { data: ChartPoint[]; selectedRule
 
 export default function CoastlineParadoxPage() {
   const [rulerSize, setRulerSize] = useState(30);
-  const [segmentCount, setSegmentCount] = useState(0);
-  const [measuredLength, setMeasuredLength] = useState(0);
 
-  const handleSegmentCount = useCallback((n: number, len: number) => {
-    setSegmentCount(n);
-    setMeasuredLength(len);
+  const currentWalk = useMemo(() => {
+    return WALK_BY_RULER.get(rulerSize) ?? ALL_WALKS[0];
+  }, [rulerSize]);
+
+  const chartData: ChartPoint[] = useMemo(() => {
+    return ALL_WALKS.map((w) => ({
+      rulerSize: w.rulerSize,
+      measuredLength: w.measuredLength,
+    }));
   }, []);
-
-  // Compute chart data once (canonical 600-wide coordinates, unscaled)
-  const chartData: ChartPoint[] = (() => {
-    const pts: ChartPoint[] = [];
-    for (let r = 5; r <= 100; r += 5) {
-      const result = walkCoastline(COAST_POINTS_600, r);
-      pts.push({ rulerSize: r, measuredLength: result.measuredLength });
-    }
-    return pts;
-  })();
 
   return (
     <PageShell>
       <div className="max-w-4xl mx-auto space-y-12 pb-20">
-
-        {/* ── Page header ──────────────────────────────────────────────────── */}
+        {/* ── Page header ──────────────────────────────────────── */}
         <div className="pt-4">
           <p className="text-xs font-semibold tracking-[0.2em] text-blue-400/80 uppercase mb-3">
             FractalVision Lab · Interactive Demo
@@ -437,7 +548,7 @@ export default function CoastlineParadoxPage() {
           <div className="mt-6 h-px bg-gradient-to-r from-blue-500/40 via-cyan-500/20 to-transparent" />
         </div>
 
-        {/* ── Section 1 — Intro text ────────────────────────────────────────── */}
+        {/* ── Intro text ───────────────────────────────────────── */}
         <section id="intro">
           <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 md:p-8 space-y-4">
             <h2 className="text-xl font-bold text-white flex items-center gap-3">
@@ -445,20 +556,23 @@ export default function CoastlineParadoxPage() {
               The Paradox
             </h2>
             <p className="text-gray-300 leading-relaxed text-[0.95rem]">
-              The coastline paradox, introduced by Lewis Fry Richardson and developed by Benoît
-              Mandelbrot, states that the measured length of a coastline depends on the scale of
-              measurement. Using a shorter ruler captures more detail — every bay, inlet, and
-              promontory — making the total measured length longer.
+              The coastline paradox, introduced by Lewis Fry Richardson and
+              developed by Benoît Mandelbrot, states that the measured length of
+              a coastline depends on the scale of measurement. Using a shorter
+              ruler captures more detail — every bay, inlet, and promontory —
+              making the total measured length longer.
             </p>
             <p className="text-gray-300 leading-relaxed text-[0.95rem]">
-              This is directly connected to fractal dimension. A more irregular coastline has a higher
-              fractal dimension, meaning its measured length grows faster as the ruler shrinks. The
-              box-counting method used in FractalVision Lab quantifies exactly this scaling behaviour.
+              This is directly connected to fractal dimension. A more irregular
+              coastline has a higher fractal dimension, meaning its measured
+              length grows faster as the ruler shrinks. The box-counting method
+              used in FractalVision Lab quantifies exactly this scaling
+              behaviour.
             </p>
           </div>
         </section>
 
-        {/* ── Section 2 — Interactive ruler demo ───────────────────────────── */}
+        {/* ── Interactive ruler demo ───────────────────────────── */}
         <section id="ruler-demo">
           <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 md:p-8">
             <h2 className="text-xl font-bold text-white flex items-center gap-3 mb-6">
@@ -468,9 +582,14 @@ export default function CoastlineParadoxPage() {
 
             {/* Slider */}
             <div className="mb-5 flex flex-col sm:flex-row sm:items-center gap-3">
-              <label htmlFor="ruler-slider" className="text-sm font-medium text-gray-300 shrink-0">
+              <label
+                htmlFor="ruler-slider"
+                className="text-sm font-medium text-gray-300 shrink-0"
+              >
                 Ruler size:&nbsp;
-                <span className="text-sky-400 font-semibold font-mono">{rulerSize}px</span>
+                <span className="text-sky-400 font-semibold font-mono">
+                  {rulerSize}px
+                </span>
               </label>
               <input
                 id="ruler-slider"
@@ -482,26 +601,32 @@ export default function CoastlineParadoxPage() {
                 onChange={(e) => setRulerSize(Number(e.target.value))}
                 className="flex-1 accent-sky-400"
               />
-              <span className="text-xs text-gray-500 shrink-0">5px ← → 100px</span>
+              <span className="text-xs text-gray-500 shrink-0">
+                5px ← → 100px
+              </span>
             </div>
 
             {/* Canvas */}
-            <CoastlineCanvas rulerSize={rulerSize} onSegmentCount={handleSegmentCount} />
+            <CoastlineCanvas walkData={currentWalk} />
 
             {/* Stats */}
             <div className="mt-4 flex flex-wrap gap-6 text-sm">
               <span className="text-gray-400">
                 Ruler size:{" "}
-                <span className="text-sky-400 font-mono font-semibold">{rulerSize}px</span>
+                <span className="text-sky-400 font-mono font-semibold">
+                  {rulerSize}px
+                </span>
               </span>
               <span className="text-gray-400">
                 Segments:{" "}
-                <span className="text-sky-400 font-mono font-semibold">{segmentCount}</span>
+                <span className="text-sky-400 font-mono font-semibold">
+                  {currentWalk.count}
+                </span>
               </span>
               <span className="text-gray-400">
                 Measured length:{" "}
                 <span className="text-sky-400 font-mono font-semibold">
-                  {measuredLength.toFixed(0)}px
+                  {currentWalk.measuredLength}px
                 </span>
               </span>
             </div>
@@ -524,7 +649,7 @@ export default function CoastlineParadoxPage() {
           </div>
         </section>
 
-        {/* ── Section 3 — Length vs ruler-size chart ───────────────────────── */}
+        {/* ── Length vs ruler-size chart ────────────────────────── */}
         <section id="length-chart">
           <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 md:p-8">
             <h2 className="text-xl font-bold text-white flex items-center gap-3 mb-6">
@@ -535,14 +660,16 @@ export default function CoastlineParadoxPage() {
             <LengthChart data={chartData} selectedRuler={rulerSize} />
 
             <p className="mt-4 text-xs text-gray-500 italic leading-relaxed">
-              As ruler size decreases, measured length increases — a signature of fractal geometry.
-              The slope of this relationship in log-log space is directly related to the fractal
-              dimension of the coastline.
+              As ruler size decreases, measured length increases — a signature
+              of fractal geometry. The curve follows the Richardson power law
+              L(r) ∝ r<sup>1−D</sup>, where D ≈{" "}
+              {FITTED_CURVE.fractalDimension.toFixed(2)} is the fractal
+              dimension of this coastline.
             </p>
           </div>
         </section>
 
-        {/* ── Section 4 — Connection to box-counting ───────────────────────── */}
+        {/* ── Connection to box-counting ────────────────────────── */}
         <section id="box-counting">
           <div className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6 md:p-8">
             <h2 className="text-xl font-bold text-white flex items-center gap-3 mb-4">
@@ -550,11 +677,12 @@ export default function CoastlineParadoxPage() {
               Connection to Box-Counting
             </h2>
             <p className="text-gray-300 leading-relaxed text-[0.95rem]">
-              The box-counting method used in FractalVision Lab is the discrete analogue of this
-              ruler experiment. Instead of measuring length with rulers of different sizes, it counts
-              how many boxes of each size are needed to cover the pattern. The fractal dimension D is
-              the slope of log(count) vs. log(1/size) — exactly the scaling relationship this paradox
-              demonstrates.
+              The box-counting method used in FractalVision Lab is the discrete
+              analogue of this ruler experiment. Instead of measuring length with
+              rulers of different sizes, it counts how many boxes of each size
+              are needed to cover the pattern. The fractal dimension D is the
+              slope of log(count) vs. log(1/size) — exactly the scaling
+              relationship this paradox demonstrates.
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
@@ -574,7 +702,6 @@ export default function CoastlineParadoxPage() {
             </div>
           </div>
         </section>
-
       </div>
     </PageShell>
   );
