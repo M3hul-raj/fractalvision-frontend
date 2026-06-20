@@ -1,4 +1,4 @@
-# FractalVision Lab — Implementation Plan (v6 — June 11, 2026)
+# FractalVision Lab — Implementation Plan (v7 — June 19, 2026)
 
 ## Current Project State
 
@@ -7,10 +7,10 @@
 | **Status** | ✅ **Production** — fully deployed and operational |
 | **Frontend** | [https://fractalvision-frontend.vercel.app](https://fractalvision-frontend.vercel.app) |
 | **Backend API** | [https://fractalvision-backend-jt6d2.ondigitalocean.app](https://fractalvision-backend-jt6d2.ondigitalocean.app) |
-| **Last updated** | June 11, 2026 |
+| **Last updated** | June 19, 2026 |
 | **TypeScript errors** | 0 (`npx tsc --noEmit`) |
 | **Backend tests** | 16 passing (`pytest tests/`) |
-| **Phases complete** | 0–8, 10, 11 (Phase 9 deliberately skipped) |
+| **Phases complete** | 0–8, 10–12 (Phase 9 deliberately skipped) |
 
 ---
 
@@ -27,6 +27,7 @@
 6. Users can compare against 12 dissertation specimens stored in Supabase
 7. Standard mathematical fractals (Koch, Sierpiński, Cantor) validate the algorithm
 8. Client-side WASM benchmark compares JavaScript vs WebAssembly performance
+9. Interactive Coastline Paradox demo lets users explore the Richardson effect with zoom/pan
 
 ### Who it's for:
 - The dissertation committee (academic demo)
@@ -66,8 +67,8 @@ These decisions were locked during Phase 0 scaffolding and override the original
 graph TB
     subgraph "Client — Browser"
         UI["Next.js 16 Frontend<br/>React 19 + TypeScript"]
-        D3["D3.js Charts<br/>Log-log, dual-dataset"]
-        CV["Canvas API<br/>Grid overlay, binary viewer"]
+        D3["D3.js Charts<br/>Log-log, dual-dataset, coastline"]
+        CV["Canvas API<br/>Grid overlay, binary viewer, coastline"]
         ZS["Zustand Stores<br/>analyzerStore + compareStore"]
         WASM["WASM Engine<br/>C++ box-counting via Emscripten"]
     end
@@ -300,16 +301,20 @@ CREATE TABLE specimens (
 | `threshold_method` | string | `otsu` | `otsu`, `manual`, `adaptive` |
 | `threshold_value` | integer | `128` | 0–255 (used when `threshold_method=manual`) |
 | `invert` | boolean | `false` | Invert foreground/background |
-| `denoise` | boolean | `false` | Apply denoising (stub) |
-| `blur_level` | integer | `0` | Gaussian blur kernel (stub) |
+| `denoise` | boolean | `false` | Apply non-local means denoising |
+| `blur_level` | integer | `0` | Gaussian blur kernel level (1→3×3, 2→5×5, 3→7×7) |
 | `grid_offsets` | string | `"0,0.25,0.5,0.75"` | Comma-separated fractions |
 | `run_sensitivity` | boolean | `false` | Run threshold sensitivity test |
+| `run_rotation_sensitivity` | boolean | `false` | Run rotation sensitivity test |
+| `adaptive_block_size` | integer | `11` | Block size for adaptive thresholding |
+| `adaptive_c` | integer | `2` | Constant C for adaptive thresholding |
 
 **Response:** `AnalyzeResponse` includes:
 - `parameters` — settings used (mode, threshold, image dimensions)
 - `result` — D, R², intercept, standard_error, box_sizes, box_counts, log arrays, fitted_values, residuals, foreground_ratio, quality_score, reliability, interpretation, complexity_class, warnings
 - `binary_image_b64` — base64-encoded PNG of the binary image
 - `sensitivity` — `SensitivityResult | null` (thresholds_tested, dimensions, std_deviation, is_stable)
+- `rotation_sensitivity` — `RotationSensitivityResult | null` (angles_tested, dimensions, std_deviation, is_stable)
 - `processing_time_ms`
 - `threshold_method`, `threshold_value`, `analysis_mode` — echo back for UI display
 
@@ -348,41 +353,43 @@ CREATE TABLE specimens (
 
 ```
 src/
-├── app/                              # Next.js App Router pages
+├── app/                              # Next.js App Router pages (9 routes)
 │   ├── layout.tsx                    # ✅ Root layout — Navbar, Footer, Analytics, SEO metadata
 │   ├── globals.css                   # ✅ Global styles (Tailwind v4)
-│   ├── page.tsx                      # ✅ Landing page (hero, stats, features, tech stack, CTA)
-│   ├── lab/page.tsx                  # ✅ Analyzer Lab (main product page)
-│   ├── gallery/page.tsx              # ✅ Specimen Gallery (filter, sort, cards)
-│   ├── compare/page.tsx              # ✅ Compare Mode (dual upload/specimen slots)
-│   ├── explorer/page.tsx             # ✅ Fractal Explorer (generator + lightbox + results table)
-│   ├── benchmarks/page.tsx           # ✅ WASM Benchmark (JS vs WASM performance comparison)
-│   ├── methodology/page.tsx          # ✅ Methodology (5 academic sections with SEO metadata)
-│   └── limitations/page.tsx          # ✅ Scientific Limitations (5 sections, amber accent)
+│   ├── page.tsx                      # ✅ Landing page (hero, stats, features, tech stack, CTA) — max-w-7xl
+│   ├── lab/page.tsx                  # ✅ Analyzer Lab (main product page) — max-w-6xl
+│   ├── gallery/page.tsx              # ✅ Specimen Gallery (filter, sort, cards) — max-w-6xl
+│   ├── compare/page.tsx              # ✅ Compare Mode (dual upload/specimen slots) — max-w-6xl
+│   ├── explorer/page.tsx             # ✅ Fractal Explorer (generator + lightbox + results table) — max-w-6xl
+│   ├── benchmarks/page.tsx           # ✅ WASM Benchmark (JS vs WASM performance comparison) — max-w-4xl
+│   ├── methodology/page.tsx          # ✅ Methodology (5 academic sections with SEO metadata) — max-w-5xl
+│   ├── coastline-paradox/page.tsx    # ✅ Coastline Paradox (interactive ruler demo + D3 chart + zoom/pan canvas) — max-w-5xl
+│   └── limitations/page.tsx          # ✅ Scientific Limitations (5 sections, amber accent) — max-w-5xl
 │
 ├── components/
 │   ├── layout/
-│   │   ├── Navbar.tsx                # ✅ 8 links + mobile hamburger (scrollable dropdown)
+│   │   ├── Navbar.tsx                # ✅ 9 links + mobile hamburger (scrollable dropdown)
 │   │   ├── Footer.tsx                # ✅ Footer
-│   │   └── PageShell.tsx             # ✅ Page wrapper (max-w-7xl, padding)
+│   │   └── PageShell.tsx             # ✅ Page wrapper (padding)
 │   ├── analyzer/
 │   │   ├── ImageUploader.tsx          # ✅ Dumb component (props: onFileDrop, isAnalyzing, error)
-│   │   ├── PreprocessingControls.tsx   # ✅ Mode/threshold/slider controls + sensitivity toggle
+│   │   ├── PreprocessingControls.tsx   # ✅ Mode/threshold/slider controls + sensitivity toggles + denoise/blur
 │   │   ├── ResultCard.tsx             # ✅ D + R² display with ReportButton
 │   │   ├── ReportButton.tsx           # ✅ PDF export trigger (reads analyzerStore)
 │   │   ├── PipelineViewer.tsx         # ✅ Binary image + grid overlay canvas
 │   │   ├── BoxSizeSlider.tsx          # ✅ Box-size scale selector
 │   │   ├── GridOverlay.tsx            # ✅ Canvas grid rendering
 │   │   ├── QualityScore.tsx           # ✅ SVG arc gauge + reliability badge + precision + sparkline
+│   │   ├── ScaleRangeSelector.tsx     # ✅ Toggle box sizes to see D sensitivity, inline OLS
 │   │   ├── AnalysisModeSelector.tsx   # 🔲 Stub (superseded by PreprocessingControls)
 │   │   ├── ThresholdControls.tsx      # 🔲 Stub (superseded by PreprocessingControls)
-│   │   └── BinaryCanvas.tsx           # 🔲 Stub
+│   │   └── BinaryCanvas.tsx           # 🔲 Stub (superseded by PipelineViewer)
 │   ├── benchmarks/
 │   │   └── BenchmarkChart.tsx         # ✅ SVG horizontal bar chart (sky-400 / orange-400)
 │   ├── charts/
 │   │   ├── LogLogChart.tsx            # ✅ D3.js scatter + regression + dual-dataset amber overlay
+│   │   ├── ResidualChart.tsx          # ✅ D3.js residual plot (scatter + zero line, hover tooltip)
 │   │   ├── BenchmarkChart.tsx         # 🔲 Stub (orphaned — real one is benchmarks/BenchmarkChart)
-│   │   ├── ResidualChart.tsx          # 🔲 Stub
 │   │   └── SensitivityChart.tsx       # 🔲 Stub
 │   ├── compare/
 │   │   ├── ComparePanel.tsx           # ✅ Upload vs Gallery segmented control per slot
@@ -398,8 +405,8 @@ src/
 │   │   └── SierpinskiCarpet.tsx       # 🔲 Stub
 │   └── gallery/
 │       ├── SpecimenCard.tsx           # ✅ Gallery card with badges, hover effects
-│       ├── GalleryGrid.tsx            # 🔲 Stub (grid is inline in page.tsx)
-│       └── SpecimenDetail.tsx         # 🔲 Stub
+│       ├── SpecimenDetail.tsx         # ✅ Inline D3 log-log chart + full specimen detail panel (286 lines)
+│       └── GalleryGrid.tsx            # 🔲 Stub (grid is inline in page.tsx)
 │
 ├── hooks/
 │   └── useAutoAnalyze.ts             # ✅ Auto re-analyze on settings change (600ms debounce)
@@ -418,13 +425,17 @@ src/
 │   │   ├── standardFractals.ts       # ✅ Static fractal reference data (snake_case)
 │   │   └── interpretationBands.ts    # ✅ D-value interpretation bands
 │   ├── report/
-│   │   └── generateReport.ts         # ✅ jsPDF + SVG serializer. 2-page PDF
+│   │   ├── generateReport.ts         # ✅ jsPDF + SVG serializer. 2-page PDF for single analysis
+│   │   └── generateComparisonReport.ts # ✅ jsPDF 2-page comparison PDF (side-by-side slots, dual chart)
 │   ├── wasm/
 │   │   ├── imageProcessor.ts         # ✅ loadImageAsBinary(): File → resize → grayscale → Otsu → binary
 │   │   ├── boxCountingJs.ts          # ✅ Pure TS box-counting. Exports JsAnalysisResult + runBoxCountingJs()
 │   │   └── boxCountingWasm.ts        # ✅ Singleton WASM loader + runBoxCountingWasm()
-│   ├── fractal/                      # 🔲 Stubs (not needed — server handles this)
-│   └── image/                        # 🔲 Stubs (not needed except WASM benchmark uses imageProcessor.ts)
+│   ├── fractal/                      # 🔲 All 8 files are stubs (not needed — server handles this)
+│   └── image/                        # 🔲 All 9 files are stubs (not needed — WASM benchmark uses wasm/imageProcessor.ts)
+│
+├── workers/
+│   └── fractalWorker.ts             # 🔲 Stub (Phase 9 skipped — all analysis is server-side)
 │
 └── types/
     ├── analysis.ts                   # ✅ AnalysisResult, ProcessingState, SensitivityResult, QualityComponents
@@ -432,57 +443,68 @@ src/
     └── api.ts                        # ✅ AnalyzeApiResponse, GenerateFractalResponse, StandardFractalInfo
 
 wasm/                                 # C++ source files (NOT in src/)
-├── box_counting.cpp                  # ✅ C++ box-counting + OLS regression
+├── box_counting.cpp                  # ✅ C++ box-counting + OLS regression (8.6 KB)
 ├── compile.bat                       # ✅ Windows build script
 └── compile.sh                        # ✅ Unix/Mac build script
 
 public/wasm/                          # Compiled WASM output (committed to git)
-├── box_counting.js                   # ✅ Emscripten glue code (14 KB)
-└── box_counting.wasm                 # ✅ Compiled WebAssembly binary (142 KB)
+├── box_counting.js                   # ✅ Emscripten glue code (~12 KB)
+└── box_counting.wasm                 # ✅ Compiled WebAssembly binary (~139 KB)
 ```
 
 ### Backend (`fractalvision-backend/`)
 
 ```
 app/
-├── main.py                           # ✅ FastAPI app + CORS middleware
-├── config.py                         # ✅ Pydantic Settings (env vars)
+├── main.py                           # ✅ FastAPI app + CORS middleware + rate limiter + lifespan
+├── config.py                         # ✅ Pydantic Settings (env vars, CORS origins, rate limits, upload limits)
 ├── __init__.py
 │
-├── api/v1/
-│   ├── router.py                     # ✅ v1 router aggregator
-│   ├── analyze.py                    # ✅ POST /analyze (working), POST /analyze/batch (stub). 10MB/JPG/PNG/WEBP validation
-│   ├── fractals.py                   # ✅ GET /fractals (list), POST /fractals/{id}/generate (generate+analyze)
-│   ├── meta.py                       # 🔲 Stub (interpretation bands)
-│   └── health.py                     # ✅ GET /health
+├── api/
+│   ├── deps.py                      # ✅ Shared API dependencies (slowapi IP-based rate limiter)
+│   └── v1/
+│       ├── router.py                # ✅ v1 router aggregator (4 sub-routers)
+│       ├── analyze.py               # ✅ POST /analyze (fully working, denoise/blur/rotation_sensitivity). POST /analyze/batch (stub)
+│       ├── fractals.py              # ✅ GET /fractals (list), POST /fractals/{id}/generate (generate+analyze)
+│       ├── meta.py                  # 🔲 Stub (interpretation bands endpoint)
+│       └── health.py                # ✅ GET /health
 │
 ├── core/
-│   ├── image_processing.py           # ✅ decode, resize, grayscale, otsu, manual, adaptive, boundary, texture, encode_base64
-│   ├── box_counting.py               # ✅ auto_select_box_sizes, box_count, box_count_with_offsets, run_box_counting
-│   ├── regression.py                 # ✅ linear_regression (scipy.stats.linregress), compute_log_values, compute_r_squared
-│   ├── fractal_generators.py         # ✅ 5 generators: Cantor, Koch Curve, Koch Snowflake, Sierpiński Triangle, Sierpiński Carpet
-│   ├── quality_score.py              # ✅ calculate_quality_score(r_squared, num_scales)
-│   ├── sensitivity.py                # ✅ run_threshold_sensitivity(): threshold ± 15, σ < 0.05 = stable
-│   └── interpretation.py             # ✅ D-value interpretation and complexity classification
+│   ├── image_processing.py          # ✅ decode, resize, grayscale, otsu, manual, adaptive, boundary (Canny), texture (morph gradient), blur, denoise, encode_base64. Contains 4 legacy stubs (apply_blur, denoise_image, extract_boundary, skeletonize) — superseded by implemented functions above them.
+│   ├── box_counting.py              # ✅ auto_select_box_sizes, box_count, box_count_with_offsets, run_box_counting
+│   ├── regression.py                # ✅ linear_regression (scipy.stats.linregress), compute_log_values, compute_r_squared, compute_confidence_interval
+│   ├── fractal_generators.py        # ✅ 5 generators: Cantor, Koch Curve, Koch Snowflake, Sierpiński Triangle, Sierpiński Carpet. FRACTAL_DISPATCH registry.
+│   ├── quality_score.py             # ✅ calculate_quality_score(r_squared, num_scales, foreground_ratio, sensitivity_std, rotation_std)
+│   ├── sensitivity.py               # ✅ run_threshold_sensitivity() (threshold ±15), run_rotation_sensitivity() (0°/15°/30°/45°/90°)
+│   └── interpretation.py            # ✅ D-value bands (5 bands), complexity classification, get_fractal_interpretation()
 │
 ├── models/
-│   ├── enums.py                      # ✅ AnalysisMode, ThresholdMethod, Reliability, ComplexityClass
-│   ├── requests.py                   # ✅ GenerateFractalRequest
-│   └── responses.py                  # ✅ AnalyzeResponse, GenerateFractalResponse, StandardFractalInfo, SensitivityResult
+│   ├── enums.py                     # ✅ AnalysisMode, ThresholdMethod, Reliability, ComplexityClass
+│   ├── requests.py                  # ✅ AnalyzeRequestParams, GenerateFractalRequest
+│   └── responses.py                 # ✅ AnalyzeResponse, GenerateFractalResponse, StandardFractalInfo, SensitivityResult, RotationSensitivityResult, BatchAnalyzeResponse, ErrorBody, ApiResponse
 │
 └── utils/
-    ├── rate_limiter.py               # ✅ IP-based rate limiter (slowapi)
-    ├── image_validation.py           # 🔲 Stub (validation inline in analyze.py)
-    └── id_generator.py               # 🔲 Stub
+    ├── rate_limiter.py              # ✅ IP-based rate limiter config (slowapi)
+    ├── image_validation.py          # 🔲 Stub (validation is inline in analyze.py)
+    └── id_generator.py              # ✅ generate_short_id() — UUID-based short ID with prefix
 
 tests/
-├── test_image_processing.py          # ✅ 7 tests
-├── test_box_counting.py              # ✅ 3 tests
-├── test_regression.py                # ✅ 2 tests
-├── test_quality_score.py             # ✅ 2 tests
-├── test_sensitivity.py               # ✅ 2 tests
-├── test_analyze_endpoint.py          # 🔲 Stub
-└── conftest.py                       # ✅ pytest config
+├── conftest.py                       # ✅ pytest config
+├── test_image_processing.py          # ✅ 7 tests (grayscale, manual, adaptive, boundary, texture, otsu, resize)
+├── test_box_counting.py              # ✅ 3 tests (box_count, auto_select, run_box_counting)
+├── test_regression.py                # ✅ 2 tests (linear_regression, compute_log_values)
+├── test_quality_score.py             # ✅ 2 tests (high_reliability, low_reliability)
+├── test_sensitivity.py               # ✅ 2 tests (checkerboard, none_for_adaptive)
+└── test_analyze_endpoint.py          # 🔲 Stub
+
+Root files:
+├── Procfile                          # ✅ uvicorn startup command
+├── Dockerfile                        # ✅ Python 3.11-slim, libglib2.0, uvicorn
+├── docker-compose.yml                # ✅ Docker Compose config (not used for dev)
+├── requirements.txt                  # ✅ 12 dependencies
+├── backfill_db.py                    # ✅ Script to backfill Supabase DB
+├── upload_images.py                  # ✅ Script to upload specimen images to Supabase Storage
+└── README.md                         # ✅ Complete documentation
 ```
 
 ---
@@ -496,6 +518,8 @@ This is the exact math pipeline in `app/core/`:
 image = decode_uploaded_image(file_bytes)    # cv2.imdecode from raw bytes
 image = resize_if_needed(image, 1024)        # Scale to max 1024px dimension
 grayscale = to_grayscale(image)              # cv2.cvtColor BGR→GRAY
+# Optional: apply_gaussian_blur(gray, level)  # level 1→3×3, 2→5×5, 3→7×7
+# Optional: apply_denoise(gray)               # cv2.fastNlMeansDenoising
 ```
 
 ### Step 2: Binary Conversion (5 modes)
@@ -530,11 +554,20 @@ result = scipy.stats.linregress(x, y)
 ### Step 5: Quality & Sensitivity
 ```python
 # Quality score (0-100):
-score = round(R² × 80) + clamp(scales - 3, 0, 5) × 4  # capped at 100
+# Base = R² × 100
+# Bonuses: R² ≥ 0.999 → +5
+# Penalties: R² < 0.95 → -20, R² < 0.90 → -20 more, scales < 5 → -10
+# Foreground ratio: <0.05 → -15, <0.10 → -5, >0.95 → -15, >0.85 → -5
+# Sensitivity penalty: σ > 0.10 → -20, σ > 0.05 → -10
+# Rotation penalty: σ > 0.10 → -15, σ > 0.05 → -8
 # Reliability: ≥85 = High, ≥70 = Medium, <70 = Low
 
-# Sensitivity test (optional, full_mask + non-adaptive only):
-# Re-runs analysis at threshold, threshold-15, threshold+15
+# Threshold sensitivity test (optional, full_mask + non-adaptive only):
+# Re-runs analysis at threshold-15, threshold, threshold+15
+# σ < 0.05 → Stable; σ ≥ 0.05 → Unstable
+
+# Rotation sensitivity test (optional, any mode):
+# Re-runs at 0°, 15°, 30°, 45°, 90° with cv2.warpAffine INTER_NEAREST
 # σ < 0.05 → Stable; σ ≥ 0.05 → Unstable
 ```
 
@@ -553,8 +586,8 @@ Phase 10 implemented a client-side box-counting engine in C++, compiled to WebAs
 | C++ source | `wasm/box_counting.cpp` | 8.6 KB |
 | Windows build script | `wasm/compile.bat` | 456 B |
 | Unix build script | `wasm/compile.sh` | 526 B |
-| Compiled JS glue | `public/wasm/box_counting.js` | ~14 KB |
-| Compiled WASM binary | `public/wasm/box_counting.wasm` | ~142 KB |
+| Compiled JS glue | `public/wasm/box_counting.js` | ~12 KB |
+| Compiled WASM binary | `public/wasm/box_counting.wasm` | ~139 KB |
 
 ### Compile command (Windows)
 
@@ -627,7 +660,8 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
 - Backend: Added `manual_threshold()`, `adaptive_threshold()`, `mode_boundary()` (Canny), `mode_texture()` (morphological gradient)
 - Backend: `AnalysisMode` enum updated: `full_mask`, `boundary`, `texture`
 - Backend: Degenerate result validation (D outside 0.5–2.1 → HTTP 422)
-- Frontend: `PreprocessingControls.tsx` — radio buttons for mode + threshold, slider for manual value
+- Backend: `apply_gaussian_blur()` and `apply_denoise()` implemented
+- Frontend: `PreprocessingControls.tsx` — radio buttons for mode + threshold, slider for manual value, denoise/blur controls
 - Frontend: `useAutoAnalyze.ts` hook — auto re-runs analysis when settings change (600ms debounce for slider)
 - Frontend: Error state in Zustand store + error display in upload zone
 - 4 new backend tests (manual, adaptive, boundary, texture)
@@ -638,6 +672,7 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
 - Implemented `queries.ts` — `getSpecimens()`, `getSpecimensByType()`, `getSpecimenById()`, `getStandardFractals()`
 - Built gallery page with filter bar (All/Leaves/Coastlines), sort dropdown, loading skeletons, error/empty states
 - Built `SpecimenCard.tsx` with type badges, complexity class, D/R² hero numbers, and specimen image rendering
+- Built `SpecimenDetail.tsx` with inline D3 log-log chart and full specimen data panel
 - Python script (`upload_images.py`) uploaded all dissertation images to Supabase Storage
 
 ### ✅ Phase 5: Reliability Dashboard (COMPLETE)
@@ -645,14 +680,16 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
 **Backend:**
 - `image_processing.py` — all threshold functions return `(binary, threshold_value)` tuples
 - `regression.py` — switched to `scipy.stats.linregress`; added `confidence_interval` (95%) and `standard_error`
-- `quality_score.py` — `calculate_quality_score(r_squared, num_scales)` → `{score, reliability}` (0–100 scale)
-- `sensitivity.py` — `run_threshold_sensitivity()`: threshold ± 15, σ < 0.05 = stable; returns `None` for adaptive
+- `quality_score.py` — `calculate_quality_score(r_squared, num_scales, foreground_ratio, sensitivity_std, rotation_std)` → `{score, reliability}` (0–100 scale)
+- `sensitivity.py` — `run_threshold_sensitivity()`: threshold ± 15, σ < 0.05 = stable; `run_rotation_sensitivity()`: 5 angles (0°–90°)
 - 4 new tests: `test_quality_score.py` × 2, `test_sensitivity.py` × 2. **Total: 16 tests passing**
 
 **Frontend:**
 - Circular import bug fixed: `SensitivityResult` moved from `api.ts` → `analysis.ts`
-- `PreprocessingControls.tsx` — sensitivity toggle, disabled when `analysisMode !== full_mask` OR `thresholdMethod === adaptive`
+- `PreprocessingControls.tsx` — sensitivity toggle, rotation sensitivity toggle, disabled when `analysisMode !== full_mask` OR `thresholdMethod === adaptive`
 - `QualityScore.tsx` — SVG semicircular arc gauge, reliability badge, precision panel (D ± margin, CI, SE), sensitivity sparkline with ±0.10 Y-window
+- `ScaleRangeSelector.tsx` — toggle box sizes on/off to see how D changes, inline OLS recomputation
+- `ResidualChart.tsx` — D3.js residual scatter plot with zero line and hover tooltips
 
 ### ✅ Phase 5.5: Landing Page & Layout Stabilization (COMPLETE)
 - Hero section with gradient headline, dual CTA buttons
@@ -671,6 +708,7 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
 - `src/components/compare/CompareResults.tsx` — 4 metric cards, D-value comparison bars, conclusion text
 - `ImageUploader.tsx` refactored to dumb component (props: `onFileDrop`, `isAnalyzing`, `error`; no store imports)
 - Specimen comparison in `/lab`: `SpecimenPickerModal.tsx`, `ComparisonPanel.tsx`, LogLogChart updated with dual-dataset amber overlay
+- `generateComparisonReport.ts` — 2-page comparison PDF (side-by-side slot metrics, dual chart, sensitivity)
 - Accent colors: Slot A = sky-400 (#38bdf8), Slot B = orange-400 (#fb923c)
 
 ### ✅ Phase 7: Fractal Explorer (COMPLETE)
@@ -702,6 +740,7 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
   - **Page 1:** Dark banner with key stats, original + binary images in card, 4 metrics (D, R², quality, reliability), parameters card, interpretation + complexity badge, statistical summary (SE, CI, foreground ratio), warnings
   - **Page 2:** Dark banner, D3 SVG captured via `XMLSerializer` → high-DPI PNG (2× canvas), sensitivity analysis card (or "unavailable" hint)
   - Saves as: `FractalVision_Report_{timestamp}.pdf`
+- `src/lib/report/generateComparisonReport.ts` — 2-page comparison PDF for Compare mode
 - `src/components/analyzer/ReportButton.tsx` — client component, reads `analyzerStore`, renders in top-right of `ResultCard` header
 
 ### ✅ Phase 9: Web Workers (DELIBERATELY SKIPPED)
@@ -710,7 +749,7 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
 ### ✅ Phase 10: WASM Benchmark Engine (COMPLETE)
 - `wasm/box_counting.cpp` — C++ box-counting + hand-rolled OLS regression, mirrors Python backend. Exports: `wasm_run_analysis`, `wasm_free`
 - `wasm/compile.bat` + `wasm/compile.sh` — Emscripten build scripts (MODULARIZE=1, -O2, ALLOW_MEMORY_GROWTH=1)
-- `public/wasm/box_counting.js` (14 KB) + `box_counting.wasm` (142 KB) — compiled and committed to git
+- `public/wasm/box_counting.js` (~12 KB) + `box_counting.wasm` (~139 KB) — compiled and committed to git
 - `src/lib/wasm/imageProcessor.ts` — `loadImageAsBinary()`: loads File, caps at 1024px, RGBA→grayscale, Otsu thresholding, returns binary Uint8Array
 - `src/lib/wasm/boxCountingJs.ts` — pure TypeScript mirror of C++. Exports `runBoxCountingJs()` + `JsAnalysisResult` interface
 - `src/lib/wasm/boxCountingWasm.ts` — singleton WASM loader. Script injection, `createBoxCountingModule({locateFile})`, malloc/HEAPU8.set/free lifecycle
@@ -734,6 +773,30 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
 
 **Outstanding:**
 - ⬜ `localStorage` persistence for analysis results (was in Phase 11 plan, never implemented). Results are lost on page refresh — they live only in Zustand stores.
+
+### ✅ Phase 12: Coastline Paradox — Interactive Educational Demo (COMPLETE)
+
+**What was built:** A fully self-contained, client-side educational page (`/coastline-paradox`) that demonstrates the Richardson coastline paradox — the phenomenon where measuring a coastline with smaller rulers yields a longer total length, which is the intuitive foundation for fractal dimension.
+
+**Technical details:**
+- `src/app/coastline-paradox/page.tsx` — single 1,209-line file containing all logic:
+  - **High-resolution fractal coastline:** ~25,601 points generated via multi-frequency sinusoidal base (201 points) + 7 levels of midpoint displacement. Average segment ≈ 0.08px, supporting clean zoom to ~20× before individual segments become visible.
+  - **Ruler walking algorithm:** Greedy walker steps along the coastline at a configurable ruler size (5–100px slider), producing ruler segments, endpoints, and measured length.
+  - **Interactive Canvas (CoastlineCanvas component):** HTML5 Canvas with full zoom/pan interactivity:
+    - Scroll wheel zoom (centered on cursor)
+    - Mouse drag to pan
+    - Touch support (pinch-to-zoom + drag)
+    - Minimap (bottom-right) showing current viewport position
+    - Zoom badge (top-right) showing current zoom level
+    - Scale bar (bottom-left) showing ruler reference size
+    - "Reset View" button when zoomed
+    - Visual polish at zoom > 2×: glowing ruler lines, enlarged endpoint dots with rings, adaptive coastline opacity
+  - **Fullscreen toggle:** Browser Fullscreen API — expands the entire demo card to fill the screen, canvas stretches to `flex: 1`, responsive to container resizing.
+  - **D3 "Measured Length vs. Ruler Size" chart (LengthChart component):** SVG scatter + line chart showing the Richardson power law curve. Height: 340px. 8 y-axis ticks. Highlighted white dot tracks the current ruler size and syncs with the slider.
+  - **Content sections:** "The Paradox" explainer, "Connection to Box-Counting" linking to the rest of the app, with CTA buttons to Analyzer Lab and Methodology.
+- **Page width:** `max-w-5xl` (1024px) — same tier as Methodology/Limitations
+- **No backend dependency.** All computation (coastline generation, walker, chart) is entirely client-side.
+- **Navbar:** Added as 8th link ("Coastline Paradox") between Benchmarks and Limitations.
 
 ---
 
@@ -831,6 +894,7 @@ wasm\compile.bat
 | **ImageUploader is a dumb component** | Refactored in Phase 6 to props-based (`onFileDrop`, `isAnalyzing`, `error`). Reusable in `/lab` and `/compare`. |
 | **WASM benchmark is client-only** | No server requests during benchmarking — isolates comparison from network latency. |
 | **PDF chart uses SVG serializer** | `XMLSerializer` → `Blob` → `Image` → 2× DPI canvas, not html2canvas. Crisp D3 SVG output. |
+| **Coastline Paradox is client-only** | No API needed — the fractal coastline is generated procedurally, and the ruler walker runs in pure JS. Keeps the page instant and self-contained. |
 
 ---
 
@@ -841,13 +905,22 @@ wasm\compile.bat
 | `localStorage` persistence never implemented | Low | ⬜ Outstanding |
 | `POST /analyze/batch` is a stub | Low | 🔲 Intentionally excluded |
 | `GET /meta/interpretation-bands` is a stub | Low | 🔲 Intentionally excluded |
-| Several component stubs remain (AnalysisModeSelector, etc.) | Low | Harmless — superseded |
+| Several component stubs remain (AnalysisModeSelector, ThresholdControls, BinaryCanvas) | Low | Harmless — superseded by PreprocessingControls and PipelineViewer |
 | `charts/BenchmarkChart.tsx` is an orphaned stub | Low | Real one is `benchmarks/BenchmarkChart.tsx` |
+| `charts/SensitivityChart.tsx` is a stub | Low | Sensitivity sparkline is inline in QualityScore.tsx |
+| `gallery/GalleryGrid.tsx` is a stub | Low | Grid layout is inline in gallery/page.tsx |
+| `explorer/` fractal component stubs (4 files) | Low | Rendering is server-side via API |
+| `lib/fractal/` all 8 files are stubs | Low | Not needed — server handles fractal computation |
+| `lib/image/` all 9 files are stubs | Low | Not needed — server handles image processing |
+| `workers/fractalWorker.ts` is a stub | Low | Phase 9 deliberately skipped |
+| `image_processing.py` has 4 legacy function stubs (`apply_blur`, `denoise_image`, `extract_boundary`, `skeletonize`) | Low | Superseded by implemented functions above them in the same file |
+| `utils/image_validation.py` has stub functions | Low | Validation is inline in `analyze.py` |
+| `test_analyze_endpoint.py` is a stub | Low | Endpoint tested manually; integration tests not needed |
 | WASM first run ~200ms cold start | By design | Module cached after first call |
 
 ---
 
-## 18. Navbar Link Order
+## 18. Navbar Link Order (9 links)
 
 1. Home (`/`)
 2. Analyzer Lab (`/lab`)
@@ -856,8 +929,25 @@ wasm\compile.bat
 5. Fractal Explorer (`/explorer`)
 6. Benchmarks (`/benchmarks`)
 7. Methodology (`/methodology`)
-8. Limitations (`/limitations`)
+8. Coastline Paradox (`/coastline-paradox`)
+9. Limitations (`/limitations`)
 
 ---
 
-*Last updated: June 11, 2026 — All phases complete. Project in production.*
+## 19. Page Width Tiers
+
+| Page | Width | Viewport Fill | Tier |
+|------|-------|--------------|------|
+| **Home** | `max-w-7xl` (1280px) | 84% | Full-width landing |
+| **Analyzer Lab** | `max-w-6xl` (1152px) | 76% | Tool dashboard |
+| **Gallery** | `max-w-6xl` (1152px) | 76% | Tool dashboard |
+| **Compare** | `max-w-6xl` (1152px) | 76% | Tool dashboard |
+| **Fractal Explorer** | `max-w-6xl` (1152px) | 76% | Tool dashboard |
+| **Benchmarks** | `max-w-4xl` (896px) | 59% | Single-column tool |
+| **Methodology** | `max-w-5xl` (1024px) | 67% | Documentation |
+| **Coastline Paradox** | `max-w-5xl` (1024px) | 67% | Interactive demo + docs |
+| **Limitations** | `max-w-5xl` (1024px) | 67% | Documentation |
+
+---
+
+*Last updated: June 19, 2026 — All phases complete (0–8, 10–12). Phase 9 deliberately skipped. Project in production.*
