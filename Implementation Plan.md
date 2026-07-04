@@ -1,4 +1,4 @@
-# FractalVision Lab — Implementation Plan (v7 — June 19, 2026)
+# FractalVision Lab — Implementation Plan (v8 — July 4, 2026)
 
 ## Current Project State
 
@@ -6,11 +6,12 @@
 |-------|-------|
 | **Status** | ✅ **Production** — fully deployed and operational |
 | **Frontend** | [https://fractalvision-frontend.vercel.app](https://fractalvision-frontend.vercel.app) |
-| **Backend API** | [https://fractalvision-backend-jt6d2.ondigitalocean.app](https://fractalvision-backend-jt6d2.ondigitalocean.app) |
-| **Last updated** | June 19, 2026 |
+| **Backend API** | [https://fractalvision-backend-43382945646.us-central1.run.app](https://fractalvision-backend-43382945646.us-central1.run.app) |
+| **Last updated** | July 4, 2026 |
 | **TypeScript errors** | 0 (`npx tsc --noEmit`) |
 | **Backend tests** | 16 passing (`pytest tests/`) |
 | **Phases complete** | 0–8, 10–12 (Phase 9 deliberately skipped) |
+| **Hosting cost** | $0/month (all services on free tiers) |
 
 ---
 
@@ -57,7 +58,7 @@ These decisions were locked during Phase 0 scaffolding and override the original
 | **Authentication** | None (all public) | Same as planned |
 | **Repos** | Separate repos: `fractalvision-frontend/` + `fractalvision-backend/` | Same as planned |
 | **Frontend deployment** | Vercel (auto-deploy from GitHub main) | ✅ Deployed |
-| **Backend deployment** | DigitalOcean App Platform (Bangalore BLR1) | ✅ Changed from Railway/Render to DigitalOcean |
+| **Backend deployment** | Google Cloud Run (us-central1, free tier) | ✅ Changed from DigitalOcean to Google Cloud Run (v8) |
 
 ---
 
@@ -85,7 +86,11 @@ graph TB
 
     subgraph "Hosting"
         VCL["Vercel<br/>Frontend CDN"]
-        DO["DigitalOcean<br/>Backend API"]
+        GCR["Google Cloud Run<br/>Backend API (us-central1)"]
+    end
+
+    subgraph "Operational"
+        CRON["cron-job.org<br/>Keep-alive pings"]
     end
 
     UI --> ZS
@@ -98,7 +103,9 @@ graph TB
     UI -->|"Specimen images"| STR
     UI --> WASM
     VCL -.->|"serves"| UI
-    DO -.->|"serves"| API
+    GCR -.->|"serves"| API
+    CRON -.->|"every 5 min"| API
+    CRON -.->|"daily"| DB
 ```
 
 ### Data flow for single-image analysis:
@@ -163,7 +170,9 @@ No server requests. Entirely client-side.
 | Supabase | PostgreSQL database + Storage (managed cloud, free tier) | ✅ Active |
 | GitHub | Version control — both repos pushed to `M3hul-raj` | ✅ Active |
 | Vercel | Frontend deployment (auto-deploy on push to main) | ✅ Active |
-| DigitalOcean App Platform | Backend deployment ($10/mo, 1GB RAM, BLR1 Bangalore) | ✅ Active |
+| Google Cloud Run | Backend deployment (free tier, 1 GiB RAM, us-central1) | ✅ Active |
+| cron-job.org | Keep-alive automation (backend every 5 min, Supabase daily) | ✅ Active |
+| ~~DigitalOcean App Platform~~ | ~~Backend deployment (BLR1 Bangalore)~~ | ❌ Deactivated (v8) |
 
 ---
 
@@ -184,20 +193,25 @@ No server requests. Entirely client-side.
 |----------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key (public, read-only) |
-| `NEXT_PUBLIC_API_URL` | Backend API base URL (`https://fractalvision-backend-jt6d2.ondigitalocean.app/api/v1`) |
+| `NEXT_PUBLIC_API_URL` | Backend API base URL (`https://fractalvision-backend-43382945646.us-central1.run.app/api/v1`) |
 
-### Backend — DigitalOcean App Platform
+### Backend — Google Cloud Run
 
 | Setting | Value |
 |---------|-------|
-| Platform | DigitalOcean App Platform |
-| Plan | Basic ($10/month, 1 GB RAM) |
-| Region | Bangalore (BLR1) |
-| Buildpack | Python (not Docker) |
-| Start command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
-| Credit | $200 from GitHub Student Developer Pack (expires June 2027) |
+| Platform | Google Cloud Run (serverless containers) |
+| Plan | Free tier (180,000 vCPU-sec + 360,000 GiB-sec/month) |
+| Region | `us-central1` |
+| Build method | Dockerfile (continuous deploy from GitHub via Cloud Build) |
+| Memory | 1 GiB |
+| CPU | 1 vCPU |
+| Min instances | 0 (scales to zero when idle — no cost) |
+| Max instances | 2 (safety cap to stay within free tier) |
+| Authentication | Allow unauthenticated invocations |
+| Start command | `sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"` |
+| Monthly cost | $0.00 (well within free tier limits) |
 
-**Environment variables:**
+**Environment variables (set in Cloud Run console):**
 
 | Variable | Purpose |
 |----------|---------|
@@ -498,13 +512,15 @@ tests/
 └── test_analyze_endpoint.py          # 🔲 Stub
 
 Root files:
-├── Procfile                          # ✅ uvicorn startup command
-├── Dockerfile                        # ✅ Python 3.11-slim, libglib2.0, uvicorn
+├── Dockerfile                        # ✅ Python 3.11-slim, libglib2.0, dynamic $PORT for Cloud Run
 ├── docker-compose.yml                # ✅ Docker Compose config (not used for dev)
 ├── requirements.txt                  # ✅ 12 dependencies
 ├── backfill_db.py                    # ✅ Script to backfill Supabase DB
 ├── upload_images.py                  # ✅ Script to upload specimen images to Supabase Storage
 └── README.md                         # ✅ Complete documentation
+
+Deleted files (v8):
+└── Procfile                          # ❌ Deleted — was for Heroku/Render; Cloud Run uses Dockerfile
 ```
 
 ---
@@ -768,7 +784,7 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
 - Vercel Analytics: `@vercel/analytics ^2.0.1`, `<Analytics />` in `layout.tsx`
 - `/benchmarks` re-added to Navbar after Phase 10
 - Frontend deployed to Vercel (auto-deploy from GitHub)
-- Backend deployed to DigitalOcean App Platform (BLR1, Python buildpack)
+- Backend deployed to Google Cloud Run (us-central1, Docker, 1 GiB RAM) — migrated from DigitalOcean in v8
 - CORS configured for production URLs
 
 **Outstanding:**
@@ -810,7 +826,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ```
 
 > [!NOTE]
-> In production (Vercel), `NEXT_PUBLIC_API_URL` is set to `https://fractalvision-backend-jt6d2.ondigitalocean.app/api/v1`.
+> In production (Vercel), `NEXT_PUBLIC_API_URL` is set to `https://fractalvision-backend-43382945646.us-central1.run.app/api/v1`.
 
 ### Backend (`.env`)
 ```env
@@ -920,7 +936,33 @@ wasm\compile.bat
 
 ---
 
-## 18. Navbar Link Order (9 links)
+## 18. Operational Automation (Keep-Alive)
+
+Because Google Cloud Run scales to zero after ~15 minutes of inactivity (causing 10–20s cold starts) and Supabase free tier pauses databases after 7 days of no activity, two automated keep-alive jobs are configured on **[cron-job.org](https://console.cron-job.org)**:
+
+| Job | URL | Schedule | Method | Headers | Purpose |
+|-----|-----|----------|--------|---------|--------|
+| **Backend Keep-Alive** | `.../api/v1/health` | Every 5 minutes (`*/5 * * * *`) | `GET` | None | Prevents Cloud Run cold starts by keeping the container warm |
+| **Supabase Keep-Alive** | `.../rest/v1/specimens?select=id&limit=1` | Daily at 00:00 UTC (`0 0 * * *`) | `GET` | `apikey: <SUPABASE_ANON_KEY>` | Resets Supabase's 7-day inactivity timer to prevent database auto-pause |
+
+**Cost:** $0/month — cron-job.org free tier allows unlimited cron jobs.
+
+**Verification:** Both jobs tested and confirmed returning HTTP 200 OK.
+
+---
+
+## 19. Infrastructure Migration Log
+
+| Date | Change | Details |
+|------|--------|---------|
+| June 9, 2026 | Backend first deployed | DigitalOcean App Platform (BLR1) via GitHub Student Pack credits |
+| July 4, 2026 | Backend migrated | DigitalOcean → Google Cloud Run (us-central1, free tier) — credits expiring July 31 |
+| July 4, 2026 | Keep-alive automation added | cron-job.org — backend ping every 5 min + Supabase query daily |
+| July 4, 2026 | DigitalOcean account | Deactivated |
+
+---
+
+## 20. Navbar Link Order (9 links)
 
 1. Home (`/`)
 2. Analyzer Lab (`/lab`)
@@ -934,7 +976,7 @@ wasm\compile.bat
 
 ---
 
-## 19. Page Width Tiers
+## 21. Page Width Tiers
 
 | Page | Width | Viewport Fill | Tier |
 |------|-------|--------------|------|
@@ -950,4 +992,4 @@ wasm\compile.bat
 
 ---
 
-*Last updated: June 19, 2026 — All phases complete (0–8, 10–12). Phase 9 deliberately skipped. Project in production.*
+*Last updated: July 4, 2026 (v8) — All phases complete (0–8, 10–12). Phase 9 deliberately skipped. Backend migrated to Google Cloud Run. Hosting cost: $0/month. Project in production.*
