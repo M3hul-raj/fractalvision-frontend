@@ -32,7 +32,7 @@ The fractal dimension D quantifies the structural complexity of natural patterns
 
 ### Specimen Gallery
 
-- 11 dissertation specimens (7 leaves, 4 coastlines) stored in Supabase PostgreSQL with images in Supabase Storage
+- 12 dissertation specimens (7 leaves, 5 coastlines) stored in Supabase PostgreSQL with images in Supabase Storage
 - Client-side filtering by category (All / Leaves / Coastlines) and sorting (D high→low, D low→high, name A→Z)
 - Each specimen card shows fractal dimension, R², complexity class, and interpretation text
 
@@ -59,17 +59,18 @@ The fractal dimension D quantifies the structural complexity of natural patterns
 - **Methodology** — fractal dimension theory, box-counting algorithm, log-log regression, preprocessing pipeline (3 stages), quality and reliability metrics
 - **Limitations** — rasterization constraints, finite scale range, threshold sensitivity, image quality factors, method-level limitations
 
-### In Progress
+### WASM Benchmark Engine
 
-- **WebAssembly (WASM) Benchmark Engine** — C++ box-counting algorithm compiled via Emscripten, with a /benchmarks page comparing JS vs WASM performance on identical inputs
+- C++ box-counting algorithm compiled via Emscripten to WebAssembly, with a `/benchmarks` page comparing JS vs WASM performance on identical inputs
+- First run includes ~200ms WASM cold start; subsequent runs typically ~1ms
 
 ## Architecture
 
 ```
 ┌─────────────────┐       ┌─────────────────────┐       ┌──────────────┐
 │  Browser (SPA)  │──────▸│  FastAPI Backend     │──────▸│   Supabase   │
-│                 │       │  DigitalOcean App    │       │  PostgreSQL  │
-│  Next.js 16     │◂──────│  Platform            │       │  + Storage   │
+│                 │       │  Google Cloud Run    │       │  PostgreSQL  │
+│  Next.js 16     │◂──────│  (us-central1)       │       │  + Storage   │
 │  React 19       │       │                     │       └──────────────┘
 │  Zustand        │       │  OpenCV · NumPy     │              ▲
 │  D3.js          │       │  SciPy · Python 3.14│              │
@@ -147,4 +148,4 @@ Deployed on **Vercel** with GitHub auto-deploy on push to `main`.
 
 **Repository:** [fractalvision-backend](https://github.com/M3hul-raj/fractalvision-backend)
 
-FastAPI backend handling all image processing (OpenCV), box-counting, log-log regression (SciPy), quality scoring, sensitivity analysis, fractal generation, and complexity classification. Deployed on DigitalOcean App Platform.
+FastAPI backend handling all image processing (OpenCV), box-counting, log-log regression (SciPy), quality scoring, sensitivity analysis, fractal generation, and complexity classification. Deployed on Google Cloud Run (free tier).
