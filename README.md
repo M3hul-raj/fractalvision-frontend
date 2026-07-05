@@ -7,6 +7,8 @@
 [![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=ffdd54)](https://www.python.org/)
 [![Tests](https://img.shields.io/badge/Tests-16%20passing-success?logo=pytest&logoColor=white)](#test-coverage)
 
+![FractalVision Lab Preview](public/preview.png)
+
 An interactive scientific tool for computing fractal dimensions of natural patterns using the box-counting method — built on original Mathematics dissertation research in fractal geometry.
 
 > Upload leaves, coastlines, or any natural texture and watch its fractal dimension emerge through live box-counting, log-log regression, and mathematical visualization.
