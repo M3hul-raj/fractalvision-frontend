@@ -1,5 +1,7 @@
 # FractalVision Lab — Implementation Plan (v8 — July 4, 2026)
 
+*This document is a chronological engineering log spanning 12 development phases and 3 infrastructure migrations — kept as a historical record of design decisions and tradeoffs. For current-state documentation, see the main [README](../README.md).*
+
 ## Current Project State
 
 | Field | Value |

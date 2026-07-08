@@ -15,6 +15,17 @@ An interactive scientific tool for computing fractal dimensions of natural patte
 
 ---
 
+## Engineering Highlights
+
+- **System Architecture:** Decoupled Next.js 16 (Vercel) + FastAPI (Google Cloud Run) achieving $0/month hosting via free-tier scale-to-zero, with cron-job.org keep-alives solving both cold-start latency and Supabase's 7-day auto-pause.
+- **Scientific Computing Pipeline:** OpenCV-based binarization (Otsu, adaptive, manual thresholding, Canny boundary extraction, morphological texture gradients) feeding a box-counting algorithm with multi-offset grid sampling to reduce alignment bias, followed by SciPy OLS regression with 95% confidence intervals.
+- **WebAssembly Performance Engineering:** C++ box-counting engine compiled to WebAssembly via Emscripten, exposing a live JS-vs-WASM benchmark; correctly handles `ALLOW_MEMORY_GROWTH`-induced ArrayBuffer reallocation by re-reading HEAPU8 after every malloc call.
+- **Interactive D3.js Visualizations:** Log-log regression charts, symmetric-domain residual plots, and a live client-side OLS recomputation panel (Scale Range Sensitivity) that recalculates the fractal dimension instantly as users toggle measurement scales.
+- **Robustness & Quality Scoring:** Composite 0–100 reliability score incorporating R², scale count, foreground coverage, threshold perturbation sensitivity (±15), and 5-angle rotation sensitivity — turning a single number into a defensible statistical confidence signal.
+- **Full-Stack Feature Delivery:** 9 distinct application surfaces (analyzer, gallery, compare mode, fractal explorer, benchmarks, coastline paradox demo, methodology/limitations docs) backed by 16 passing backend tests and zero TypeScript errors.
+
+---
+
 ## Live Application
 
 🌐 **https://fractalvision-frontend.vercel.app**
