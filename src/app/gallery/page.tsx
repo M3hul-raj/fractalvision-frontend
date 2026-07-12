@@ -10,6 +10,31 @@ import type { Specimen } from "@/types/specimen";
 type FilterType = "all" | "leaf" | "coastline";
 type SortKey = "d_desc" | "d_asc" | "name_asc";
 
+function FilterBtn({
+  value,
+  label,
+  filter,
+  onFilter,
+}: {
+  value: FilterType;
+  label: string;
+  filter: FilterType;
+  onFilter: (v: FilterType) => void;
+}) {
+  return (
+    <button
+      onClick={() => onFilter(value)}
+      className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+        filter === value
+          ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
+          : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 border border-gray-700"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function GalleryPage() {
   const [specimens, setSpecimens] = useState<Specimen[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,23 +46,26 @@ export default function GalleryPage() {
   // Fetch all specimens once on mount
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
-    getSpecimens()
-      .then((data) => {
-        if (!cancelled) setSpecimens(data);
-      })
-      .catch((err) => {
-        console.error("Supabase fetch error:", err);
-        if (!cancelled)
-          setError(
-            "Failed to load specimens. Check your Supabase configuration."
-          );
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    queueMicrotask(() => {
+      setLoading(true);
+      setError(null);
+
+      getSpecimens()
+        .then((data) => {
+          if (!cancelled) setSpecimens(data);
+        })
+        .catch((err) => {
+          console.error("Supabase fetch error:", err);
+          if (!cancelled)
+            setError(
+              "Failed to load specimens. Check your Supabase configuration."
+            );
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    });
 
     return () => {
       cancelled = true;
@@ -46,7 +74,7 @@ export default function GalleryPage() {
 
   // Client-side filter + sort
   const displayed = useMemo(() => {
-    let list =
+    const list =
       filter === "all"
         ? [...specimens]
         : specimens.filter((s) => s.category === filter);
@@ -66,25 +94,6 @@ export default function GalleryPage() {
     return list;
   }, [specimens, filter, sort]);
 
-  // Filter button helper
-  const FilterBtn = ({
-    value,
-    label,
-  }: {
-    value: FilterType;
-    label: string;
-  }) => (
-    <button
-      onClick={() => setFilter(value)}
-      className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
-        filter === value
-          ? "bg-blue-600 text-white shadow-md shadow-blue-600/30"
-          : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 border border-gray-700"
-      }`}
-    >
-      {label}
-    </button>
-  );
 
   return (
     <PageShell>
@@ -103,9 +112,9 @@ export default function GalleryPage() {
         {/* Filter bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gray-800/40 backdrop-blur-sm border border-gray-700/50 rounded-xl p-4">
           <div className="flex gap-2">
-            <FilterBtn value="all" label="All" />
-            <FilterBtn value="leaf" label="Leaves" />
-            <FilterBtn value="coastline" label="Coastlines" />
+            <FilterBtn value="all" label="All" filter={filter} onFilter={setFilter} />
+            <FilterBtn value="leaf" label="Leaves" filter={filter} onFilter={setFilter} />
+            <FilterBtn value="coastline" label="Coastlines" filter={filter} onFilter={setFilter} />
           </div>
 
           <div className="flex items-center gap-4">

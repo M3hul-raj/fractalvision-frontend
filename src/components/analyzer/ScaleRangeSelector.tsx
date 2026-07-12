@@ -50,19 +50,37 @@ export default function ScaleRangeSelector() {
   );
   const [tooltipVisible, setTooltipVisible] = useState(false);
 
+  // Treat empty set as "all enabled" — hoisted above the early return so
+  // downstream hooks always run in the same order.
+  const effectiveEnabled: Set<number> = useMemo(() => {
+    if (!result || !result.box_sizes || result.box_sizes.length === 0) {
+      return new Set<number>();
+    }
+    return enabledIndices.size === 0
+      ? new Set(result.box_sizes.map((_, i) => i))
+      : enabledIndices;
+  }, [result, enabledIndices]);
+
+  const allEnabled = useMemo(() => {
+    if (!result || !result.box_sizes) return true;
+    return effectiveEnabled.size === result.box_sizes.length;
+  }, [result, effectiveEnabled]);
+
+  // ── Filtered OLS ──────────────────────────────────────────────────────────
+  const filteredOLS = useMemo(() => {
+    if (!result || !result.box_sizes || result.box_sizes.length === 0) return null;
+    if (allEnabled) return null; // nothing to show when all are on
+    const enabledArr = Array.from(effectiveEnabled).sort((a, b) => a - b);
+    const fx = enabledArr.map((i) => result.log_inverse_sizes[i]);
+    const fy = enabledArr.map((i) => result.log_counts[i]);
+    return computeFilteredOLS(fx, fy);
+  }, [result, enabledIndices, allEnabled, effectiveEnabled]);
+
   // If result is null, render nothing
   if (!result || !result.box_sizes || result.box_sizes.length === 0) return null;
 
-  const { box_sizes, log_inverse_sizes, log_counts, fractal_dimension, r_squared } = result;
+  const { box_sizes, fractal_dimension, r_squared } = result;
   const total = box_sizes.length;
-
-  // Treat empty set as "all enabled"
-  const effectiveEnabled: Set<number> =
-    enabledIndices.size === 0
-      ? new Set(box_sizes.map((_, i) => i))
-      : enabledIndices;
-
-  const allEnabled = effectiveEnabled.size === total;
 
   // ── Toggle handler ────────────────────────────────────────────────────────
   function toggleIndex(idx: number) {
@@ -84,16 +102,6 @@ export default function ScaleRangeSelector() {
       setEnabledIndices(next);
     }
   }
-
-  // ── Filtered OLS ──────────────────────────────────────────────────────────
-  const filteredOLS = useMemo(() => {
-    if (allEnabled) return null; // nothing to show when all are on
-    const enabledArr = Array.from(effectiveEnabled).sort((a, b) => a - b);
-    const fx = enabledArr.map((i) => log_inverse_sizes[i]);
-    const fy = enabledArr.map((i) => log_counts[i]);
-    return computeFilteredOLS(fx, fy);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabledIndices, log_inverse_sizes, log_counts, allEnabled]);
 
   const delta =
     filteredOLS && !isNaN(filteredOLS.slope)

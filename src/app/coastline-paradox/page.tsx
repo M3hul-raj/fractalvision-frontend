@@ -238,6 +238,7 @@ function CoastlineCanvas({
   const [cx, setCx] = useState(WORLD_W / 2);
   const [cy, setCy] = useState(WORLD_H / 2);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Interaction refs (avoid re-renders during drag)
   const dragRef = useRef({
@@ -526,7 +527,9 @@ function CoastlineCanvas({
   // ── Wheel zoom (centered on cursor) ─────────────────────────────────────
 
   const viewRef = useRef({ zoom: 1, cx: WORLD_W / 2, cy: WORLD_H / 2 });
-  viewRef.current = { zoom, cx, cy };
+  useEffect(() => {
+    viewRef.current = { zoom, cx, cy };
+  }, [zoom, cx, cy]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -561,7 +564,7 @@ function CoastlineCanvas({
 
     canvas.addEventListener("wheel", handleWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", handleWheel);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Mouse drag ──────────────────────────────────────────────────────────
 
@@ -575,6 +578,7 @@ function CoastlineCanvas({
         startCx: cx,
         startCy: cy,
       };
+      setIsDragging(true);
     },
     [cx, cy]
   );
@@ -602,6 +606,7 @@ function CoastlineCanvas({
 
     function onMouseUp() {
       dragRef.current.active = false;
+      setIsDragging(false);
     }
 
     window.addEventListener("mousemove", onMouseMove);
@@ -610,7 +615,7 @@ function CoastlineCanvas({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Double-click zoom ───────────────────────────────────────────────────
 
@@ -709,6 +714,7 @@ function CoastlineCanvas({
     function onTouchEnd() {
       pinchRef.current.active = false;
       dragRef.current.active = false;
+      setIsDragging(false);
     }
 
     canvas.addEventListener("touchstart", onTouchStart, { passive: false });
@@ -719,11 +725,11 @@ function CoastlineCanvas({
       canvas.removeEventListener("touchmove", onTouchMove);
       canvas.removeEventListener("touchend", onTouchEnd);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Cursor style ────────────────────────────────────────────────────────
 
-  const cursorStyle = dragRef.current.active ? "grabbing" : "grab";
+  const cursorStyle = isDragging ? "grabbing" : "grab";
 
   return (
     <div className="relative" style={isFullscreen ? { flex: 1, display: "flex", flexDirection: "column" } : undefined}>

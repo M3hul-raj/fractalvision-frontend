@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useIsMounted } from "@/hooks/useIsMounted";
 import PageShell from "@/components/layout/PageShell";
 import ImageUploader from "@/components/analyzer/ImageUploader";
 import ResultCard from "@/components/analyzer/ResultCard";
@@ -18,11 +19,7 @@ import { useAutoAnalyze } from "@/hooks/useAutoAnalyze";
 import { analyzeImage } from "@/lib/api/client";
 
 export default function LabPage() {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   useAutoAnalyze();
   const store = useAnalyzerStore();

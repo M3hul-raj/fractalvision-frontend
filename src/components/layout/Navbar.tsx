@@ -22,7 +22,7 @@ export default function Navbar() {
 
   // Close mobile menu whenever the route changes
   useEffect(() => {
-    setIsMobileMenuOpen(false);
+    queueMicrotask(() => setIsMobileMenuOpen(false));
   }, [pathname]);
 
   return (

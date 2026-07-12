@@ -111,7 +111,7 @@ export default function ExplorerPage() {
 
   // Auto-generate on mount + whenever selectedId or apiIterations changes
   useEffect(() => {
-    runGenerate(selectedId, apiIterations);
+    queueMicrotask(() => runGenerate(selectedId, apiIterations));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId, apiIterations]);
 

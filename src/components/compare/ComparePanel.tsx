@@ -86,11 +86,13 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
   // Load specimens when mode switches to specimen
   useEffect(() => {
     if (mode !== "specimen" || specimens.length > 0) return;
-    setSpecimensLoading(true);
-    getSpecimens()
-      .then(setSpecimens)
-      .catch(console.error)
-      .finally(() => setSpecimensLoading(false));
+    queueMicrotask(() => {
+      setSpecimensLoading(true);
+      getSpecimens()
+        .then(setSpecimens)
+        .catch(console.error)
+        .finally(() => setSpecimensLoading(false));
+    });
   }, [mode, specimens.length]);
 
   // ── Core analysis runner ──────────────────────────────────────────────────
@@ -419,7 +421,7 @@ export default function ComparePanel({ slot }: ComparePanelProps) {
             )}
 
             {/* Specimen preview */}
-            {slotState.selectedSpecimen && (
+            {slotState.selectedSpecimen && slotState.selectedSpecimen.image_url && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-xs text-gray-500 mb-1.5">Specimen image</p>

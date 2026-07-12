@@ -37,16 +37,18 @@ export default function SpecimenPickerModal({ isOpen, onClose }: SpecimenPickerM
   // Fetch on open
   useEffect(() => {
     if (!isOpen) return;
-    setLoading(true);
-    setFetchError(null);
-    getSpecimens()
-      .then((data) => {
-        // Filter out specimens with no backfilled box_counts
-        const valid = data.filter((s) => Array.isArray(s.box_counts) && s.box_counts.length > 0);
-        setSpecimens(valid);
-      })
-      .catch((err) => setFetchError(err.message ?? "Failed to load specimens"))
-      .finally(() => setLoading(false));
+    queueMicrotask(() => {
+      setLoading(true);
+      setFetchError(null);
+      getSpecimens()
+        .then((data) => {
+          // Filter out specimens with no backfilled box_counts
+          const valid = data.filter((s) => Array.isArray(s.box_counts) && s.box_counts.length > 0);
+          setSpecimens(valid);
+        })
+        .catch((err) => setFetchError(err.message ?? "Failed to load specimens"))
+        .finally(() => setLoading(false));
+    });
   }, [isOpen]);
 
   // Close on Escape
