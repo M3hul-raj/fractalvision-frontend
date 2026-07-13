@@ -517,9 +517,10 @@ Root files:
 ├── Dockerfile                        # ✅ Python 3.11-slim, libglib2.0, dynamic $PORT for Cloud Run
 ├── docker-compose.yml                # ✅ Docker Compose config (not used for dev)
 ├── requirements.txt                  # ✅ 12 dependencies
-├── backfill_db.py                    # ✅ Script to backfill Supabase DB
-├── upload_images.py                  # ✅ Script to upload specimen images to Supabase Storage
-└── README.md                         # ✅ Complete documentation
+├── README.md                         # ✅ Complete documentation
+└── scripts/
+    ├── backfill_db.py                # ✅ Script to backfill Supabase DB
+    └── upload_images.py              # ✅ Script to upload specimen images to Supabase Storage
 
 Deleted files (v8):
 └── Procfile                          # ❌ Deleted — was for Heroku/Render; Cloud Run uses Dockerfile
@@ -691,7 +692,7 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
 - Built gallery page with filter bar (All/Leaves/Coastlines), sort dropdown, loading skeletons, error/empty states
 - Built `SpecimenCard.tsx` with type badges, complexity class, D/R² hero numbers, and specimen image rendering
 - Built `SpecimenDetail.tsx` with inline D3 log-log chart and full specimen data panel
-- Python script (`upload_images.py`) uploaded all dissertation images to Supabase Storage
+- Python script (`scripts/upload_images.py`) uploaded all dissertation images to Supabase Storage
 
 ### ✅ Phase 5: Reliability Dashboard (COMPLETE)
 
