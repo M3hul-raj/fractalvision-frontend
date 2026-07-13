@@ -69,14 +69,6 @@ function TipBox({ children }: { children: React.ReactNode }) {
   );
 }
 
-function InlineCode({ children }: { children: React.ReactNode }) {
-  return (
-    <code className="px-1.5 py-0.5 bg-gray-800 rounded text-cyan-300 text-[0.85em] font-mono">
-      {children}
-    </code>
-  );
-}
-
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LimitationsPage() {
@@ -118,7 +110,7 @@ export default function LimitationsPage() {
             </Prose>
 
             <CautionBox>
-              Diagonal edges in a raster image produce a "staircase" (aliasing) effect.
+              Diagonal edges in a raster image produce a &quot;staircase&quot; (aliasing) effect.
               The staircase pixels inflate the box count at small scales, slightly biasing D
               upwards for patterns dominated by diagonal boundaries.
             </CautionBox>
@@ -216,7 +208,7 @@ export default function LimitationsPage() {
                 Two different threshold values applied to the same image can produce foreground masks
                 with meaningfully different spatial structures, yielding different D values. This is
                 not a flaw of the algorithm; it reflects the genuine ambiguity in defining what
-                constitutes the "structure" in a noisy natural image.
+                constitutes the &quot;structure&quot; in a noisy natural image.
               </p>
             </Prose>
 
@@ -224,7 +216,7 @@ export default function LimitationsPage() {
               <div className="bg-gray-950/60 border border-gray-800 rounded-xl p-4">
                 <p className="text-sm font-semibold text-white mb-2">When Otsu is reliable</p>
                 <p className="text-gray-400 text-sm leading-relaxed">
-                  Otsu's method works best when the image histogram has a clear bimodal distribution —
+                  Otsu&apos;s method works best when the image histogram has a clear bimodal distribution —
                   a distinct peak for the background and a distinct peak for the subject.
                   Well-lit specimens on clean backgrounds are optimal.
                 </p>
@@ -267,7 +259,7 @@ export default function LimitationsPage() {
               <p>
                 FractalVision Lab measures the fractal dimension of the <em>binary mask</em> derived
                 from the input image, not of the physical object directly. The quality of this
-                measurement therefore depends on how faithfully the image represents the object's
+                measurement therefore depends on how faithfully the image represents the object&apos;s
                 structure.
               </p>
             </Prose>

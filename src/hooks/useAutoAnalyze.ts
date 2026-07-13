@@ -45,9 +45,10 @@ export function useAutoAnalyze() {
       if (res.binary_image_b64) {
         setBinaryImageUrl(`data:image/png;base64,${res.binary_image_b64}`);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Failed to auto-analyze image");
+      const errorMessage = err instanceof Error ? err.message : "Failed to auto-analyze image";
+      setError(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }

@@ -97,7 +97,7 @@ export default function MethodologyPage() {
                 Classical Euclidean geometry assigns integer dimensions to objects: a line is
                 one-dimensional, a filled square is two-dimensional, a solid cube is three-dimensional.
                 These dimensions describe how a shape <em>scales</em> — double the side length of a
-                square and its area grows by 2² = 4; double a cube's side and its volume grows by 2³ = 8.
+                square and its area grows by 2² = 4; double a cube&apos;s side and its volume grows by 2³ = 8.
               </p>
               <p>
                 Many natural objects — coastlines, leaf venation networks, snowflakes, river tributaries —
@@ -281,7 +281,7 @@ export default function MethodologyPage() {
                 A high R² value is the strongest single indicator of a well-behaved fractal structure.
                 It confirms that the power-law relationship holds across <em>all measured scales</em>,
                 not just locally — a requirement for meaningful fractal dimension estimation. Dissertation
-                specimens in FractalVision Lab's gallery achieve R² ≥ 0.9953.
+                specimens in FractalVision Lab&apos;s gallery achieve R² ≥ 0.9953.
               </p>
             </Prose>
           </Card>
