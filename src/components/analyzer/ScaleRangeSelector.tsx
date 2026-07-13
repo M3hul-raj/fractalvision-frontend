@@ -74,7 +74,7 @@ export default function ScaleRangeSelector() {
     const fx = enabledArr.map((i) => result.log_inverse_sizes[i]);
     const fy = enabledArr.map((i) => result.log_counts[i]);
     return computeFilteredOLS(fx, fy);
-  }, [result, enabledIndices, allEnabled, effectiveEnabled]);
+  }, [result, allEnabled, effectiveEnabled]);
 
   // If result is null, render nothing
   if (!result || !result.box_sizes || result.box_sizes.length === 0) return null;
