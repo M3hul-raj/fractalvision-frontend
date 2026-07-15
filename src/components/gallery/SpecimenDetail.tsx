@@ -216,11 +216,14 @@ export default function SpecimenDetail({ specimen, onClose }: SpecimenDetailProp
 
         {/* Section 2 — Image */}
         {hasImage && (
-          <img
-            src={specimen.image_url}
-            alt={specimen.name}
-            className="w-full max-h-64 object-contain rounded-lg"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- Supabase storage URL; next/image needs remotePatterns config + fixed-height parent for object-contain layout */}
+            <img
+              src={specimen.image_url}
+              alt={specimen.name}
+              className="w-full max-h-64 object-contain rounded-lg"
+            />
+          </>
         )}
 
         {/* Section 3 — Metrics row */}

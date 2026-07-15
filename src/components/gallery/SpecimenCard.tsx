@@ -29,11 +29,14 @@ export default function SpecimenCard({ specimen, onClick }: SpecimenCardProps) {
     >
       {/* Specimen image */}
       {specimen.image_url ? (
-        <img
-          src={specimen.image_url}
-          alt={specimen.name}
-          className="w-full h-40 object-cover"
-        />
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- Supabase storage URL; next/image requires remotePatterns config + layout refactor */}
+          <img
+            src={specimen.image_url}
+            alt={specimen.name}
+            className="w-full h-40 object-cover"
+          />
+        </>
       ) : (
         <div className="w-full h-40 bg-gray-700/50 flex items-center justify-center">
           <span className="text-gray-500 text-sm">No image</span>

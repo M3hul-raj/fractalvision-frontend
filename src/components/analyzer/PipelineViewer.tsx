@@ -21,6 +21,7 @@ export default function PipelineViewer({ binaryImageB64, selectedBoxSize }: Pipe
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-md flex flex-col items-center">
       <h3 className="text-xl font-bold mb-4 text-gray-100 self-start">Algorithm Microscope</h3>
       <div className="relative w-full max-w-2xl bg-black border border-gray-600">
+        {/* eslint-disable-next-line @next/next/no-img-element -- src is a base64 data URL; next/image does not support data: URIs */}
         <img 
           src={binaryImageB64} 
           alt="Binary Fractal" 
