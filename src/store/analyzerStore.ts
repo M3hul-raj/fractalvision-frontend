@@ -126,7 +126,7 @@ const initialProcessing: ProcessingState = {
 
 export const useAnalyzerStore = create<AnalyzerStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // --- Initial State ---
       originalFile: null,
       originalImageUrl: null,

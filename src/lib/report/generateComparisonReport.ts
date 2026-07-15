@@ -707,7 +707,6 @@ export async function generateComparisonReport(
 
   const sensA = slotA.result.sensitivity ?? null;
   const sensB = slotB.result.sensitivity ?? null;
-  const statsCardBottom = STATS_Y + STATS_H;
 
   if (sensA != null || sensB != null) {
     const sensY = interpCardY + interpCardH + 8;

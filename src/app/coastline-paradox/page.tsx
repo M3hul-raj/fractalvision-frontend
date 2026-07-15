@@ -257,18 +257,6 @@ function CoastlineCanvas({
     setCy(WORLD_H / 2);
   }, []);
 
-  // Clamp center so some coastline is always visible
-  const clampCenter = useCallback(
-    (x: number, y: number): [number, number] => {
-      const margin = 100 / zoom;
-      return [
-        Math.max(-margin, Math.min(WORLD_W + margin, x)),
-        Math.max(-margin, Math.min(WORLD_H + margin, y)),
-      ];
-    },
-    [zoom]
-  );
-
   // ── Draw ──────────────────────────────────────────────────────────────────
 
   const draw = useCallback(() => {

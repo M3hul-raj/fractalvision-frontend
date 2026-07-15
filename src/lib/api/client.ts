@@ -55,14 +55,8 @@ export async function analyzeImage(
 }
 
 /** Batch-analyze multiple images server-side. */
-export async function analyzeBatch(
-  files: File[],
-  options?: {
-    analysisMode?: string;
-    thresholdMethod?: string;
-  }
-): Promise<BatchAnalyzeApiResponse> {
-  // TODO: Phase 1
+export async function analyzeBatch(): Promise<BatchAnalyzeApiResponse> {
+  // TODO: Phase 1 — add files: File[] and options?: {...} parameters when implementing
   throw new Error("Not implemented");
 }
 
