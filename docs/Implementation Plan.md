@@ -500,7 +500,6 @@ app/
 │   └── responses.py                 # ✅ AnalyzeResponse, GenerateFractalResponse, StandardFractalInfo, SensitivityResult, RotationSensitivityResult, BatchAnalyzeResponse, ErrorBody, ApiResponse
 │
 └── utils/
-    ├── rate_limiter.py              # ✅ IP-based rate limiter config (slowapi)
     ├── image_validation.py          # 🔲 Stub (validation is inline in analyze.py)
     └── id_generator.py              # ✅ generate_short_id() — UUID-based short ID with prefix
 
