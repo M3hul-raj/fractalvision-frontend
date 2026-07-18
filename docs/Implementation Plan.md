@@ -482,11 +482,10 @@ app/
 │       ├── router.py                # ✅ v1 router aggregator (4 sub-routers)
 │       ├── analyze.py               # ✅ POST /analyze (fully working, denoise/blur/rotation_sensitivity). POST /analyze/batch (stub)
 │       ├── fractals.py              # ✅ GET /fractals (list), POST /fractals/{id}/generate (generate+analyze)
-│       ├── meta.py                  # 🔲 Stub (interpretation bands endpoint)
 │       └── health.py                # ✅ GET /health
 │
 ├── core/
-│   ├── image_processing.py          # ✅ decode, resize, grayscale, otsu, manual, adaptive, boundary (Canny), texture (morph gradient), blur, denoise, encode_base64. Contains 4 legacy stubs (apply_blur, denoise_image, extract_boundary, skeletonize) — superseded by implemented functions above them.
+│   ├── image_processing.py          # ✅ decode, resize, grayscale, otsu, manual, adaptive, boundary (Canny), texture (morph gradient), blur, denoise, encode_base64.
 │   ├── box_counting.py              # ✅ auto_select_box_sizes, box_count, box_count_with_offsets, run_box_counting
 │   ├── regression.py                # ✅ linear_regression (scipy.stats.linregress), compute_log_values, compute_r_squared, compute_confidence_interval
 │   ├── fractal_generators.py        # ✅ 5 generators: Cantor, Koch Curve, Koch Snowflake, Sierpiński Triangle, Sierpiński Carpet. FRACTAL_DISPATCH registry.
@@ -500,7 +499,6 @@ app/
 │   └── responses.py                 # ✅ AnalyzeResponse, GenerateFractalResponse, StandardFractalInfo, SensitivityResult, RotationSensitivityResult, BatchAnalyzeResponse, ErrorBody, ApiResponse
 │
 └── utils/
-    ├── image_validation.py          # 🔲 Stub (validation is inline in analyze.py)
     └── id_generator.py              # ✅ generate_short_id() — UUID-based short ID with prefix
 
 tests/
@@ -922,7 +920,6 @@ wasm\compile.bat
 |-------|----------|--------|
 | `localStorage` persistence never implemented | Low | ⬜ Outstanding |
 | `POST /analyze/batch` is a stub | Low | 🔲 Intentionally excluded |
-| `GET /meta/interpretation-bands` is a stub | Low | 🔲 Intentionally excluded |
 | Several component stubs remain (AnalysisModeSelector, ThresholdControls, BinaryCanvas) | Low | Harmless — superseded by PreprocessingControls and PipelineViewer |
 | `charts/BenchmarkChart.tsx` is an orphaned stub | Low | Real one is `benchmarks/BenchmarkChart.tsx` |
 | `charts/SensitivityChart.tsx` is a stub | Low | Sensitivity sparkline is inline in QualityScore.tsx |
@@ -931,8 +928,6 @@ wasm\compile.bat
 | `lib/fractal/` all 8 files are stubs | Low | Not needed — server handles fractal computation |
 | `lib/image/` all 9 files are stubs | Low | Not needed — server handles image processing |
 | `workers/fractalWorker.ts` is a stub | Low | Phase 9 deliberately skipped |
-| `image_processing.py` has 4 legacy function stubs (`apply_blur`, `denoise_image`, `extract_boundary`, `skeletonize`) | Low | Superseded by implemented functions above them in the same file |
-| `utils/image_validation.py` has stub functions | Low | Validation is inline in `analyze.py` |
 | `test_analyze_endpoint.py` is a stub | Low | Endpoint tested manually; integration tests not needed |
 | WASM first run ~200ms cold start | By design | Module cached after first call |
 
