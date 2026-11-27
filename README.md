@@ -1,368 +1,139 @@
-# FractalVision Lab
+# FractalVision Lab — Frontend
 
 [![Live Demo](https://img.shields.io/badge/Live-Demo-brightgreen?logo=vercel)](https://fractalvision-frontend.vercel.app)
 [![Backend API](https://img.shields.io/badge/API-Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)](https://fractalvision-backend-43382945646.us-central1.run.app/api/v1/health)
-[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2.7-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=ffdd54)](https://www.python.org/)
-[![Tests](https://img.shields.io/badge/Tests-16%20passing-success?logo=pytest&logoColor=white)](#test-coverage)
 
 ![FractalVision Lab Preview](public/preview.png)
 
-An interactive scientific tool for computing fractal dimensions of natural patterns using the box-counting method — built on original Mathematics dissertation research in fractal geometry.
+Interactive scientific web application for estimating the box-counting (Minkowski–Bouligand) fractal dimension of natural patterns and standard mathematical fractals.
 
-> Upload leaves, coastlines, or any natural texture and watch its fractal dimension emerge through live box-counting, log-log regression, and mathematical visualization.
-
----
-
-## Engineering Highlights
-
-- **System Architecture:** Decoupled Next.js 16 (Vercel) + FastAPI (Google Cloud Run) achieving $0/month hosting via free-tier scale-to-zero, with cron-job.org keep-alives solving both cold-start latency and Supabase's 7-day auto-pause.
-- **Scientific Computing Pipeline:** OpenCV-based binarization (Otsu, adaptive, manual thresholding, Canny boundary extraction, morphological texture gradients) feeding a box-counting algorithm with multi-offset grid sampling to reduce alignment bias, followed by SciPy OLS regression with 95% confidence intervals.
-- **WebAssembly Performance Engineering:** C++ box-counting engine compiled to WebAssembly via Emscripten, exposing a live JS-vs-WASM benchmark; correctly handles `ALLOW_MEMORY_GROWTH`-induced ArrayBuffer reallocation by re-reading HEAPU8 after every malloc call.
-- **Interactive D3.js Visualizations:** Log-log regression charts, symmetric-domain residual plots, and a live client-side OLS recomputation panel (Scale Range Sensitivity) that recalculates the fractal dimension instantly as users toggle measurement scales.
-- **Robustness & Quality Scoring:** Composite 0–100 reliability score incorporating R², scale count, foreground coverage, threshold perturbation sensitivity (±15), and 5-angle rotation sensitivity — turning a single number into a defensible statistical confidence signal.
-- **Full-Stack Feature Delivery:** 9 distinct application surfaces (analyzer, gallery, compare mode, fractal explorer, benchmarks, coastline paradox demo, methodology/limitations docs) backed by 16 passing backend tests and zero TypeScript errors.
-
----
-
-## Live Application
-
-🌐 **https://fractalvision-frontend.vercel.app**
-
-| Page | Description |
-|------|-------------|
-| [Analyzer Lab](https://fractalvision-frontend.vercel.app/lab) | Upload an image → get its fractal dimension |
-| [Gallery](https://fractalvision-frontend.vercel.app/gallery) | Browse 12 dissertation specimens (leaves + coastlines) |
-| [Compare](https://fractalvision-frontend.vercel.app/compare) | Side-by-side comparison of two analyses |
-| [Fractal Explorer](https://fractalvision-frontend.vercel.app/explorer) | Generate and analyze 5 standard mathematical fractals |
-| [Benchmarks](https://fractalvision-frontend.vercel.app/benchmarks) | JS vs WebAssembly performance comparison |
-| [Coastline Paradox](https://fractalvision-frontend.vercel.app/coastline-paradox) | Interactive demonstration of the Richardson effect |
-| [Methodology](https://fractalvision-frontend.vercel.app/methodology) | Theory behind the analysis pipeline |
-| [Limitations](https://fractalvision-frontend.vercel.app/limitations) | Scientific constraints and caveats |
-
----
-
-## Features
-
-### Analyzer Lab — Core Analysis Engine
-
-- Upload any image (JPG, PNG, WEBP, up to 10 MB) and compute its fractal dimension in seconds
-- **Three analysis modes:** Full Mask (entire binary structure), Boundary (Canny edge extraction), Texture (morphological gradient)
-- **Three threshold methods:** Otsu (automatic), Adaptive (Gaussian, configurable block size and C), Manual (user-specified 0–255)
-- Optional Gaussian blur (3 levels) and non-local means denoising
-- Auto-reanalysis on any parameter change with 600 ms debounce — no "Re-analyze" button needed
-- **Pipeline Viewer** — renders the binary image on canvas with a box-counting grid overlay at the selected scale
-- **Box Size Slider** — step through each counting scale interactively; the corresponding data point highlights on the log-log chart
-
-### Interactive Visualization
-
-- **Log-log regression chart** (D3.js) — scatter plot with fitted regression line, axis labels (log(1/ε) vs log N(ε)), and hover tooltips
-- **Comparison overlay** — a specimen's regression line (amber, dashed) superimposed on the user's data with auto-scaled axes and dual-series legend
-- **Residual chart** (D3.js) — residual scatter plot with zero line and hover tooltips for diagnosing fit quality
-- **Scale Range Selector** — toggle individual box sizes on/off to see how D changes; inline OLS recomputation shows sensitivity to scale selection
-
-### Reliability Dashboard
-
-- **Quality Score gauge** — SVG semicircular arc (0–100) with color-coded reliability badge (High / Medium / Low)
-- **Precision panel** — fractal dimension D ± margin, 95% confidence interval, standard error
-- **Threshold sensitivity** — optional test varying the threshold by ±15; sparkline visualization with ±0.10 Y-window and stability verdict (σ < 0.05 = Stable)
-- **Rotation sensitivity** — tests at 0°, 15°, 30°, 45°, 90° rotations with stability verdict
-- Quality score incorporates R², scale count, foreground ratio, sensitivity σ, and rotation σ
-
-### Specimen Gallery
-
-- **12 dissertation specimens** (7 leaves, 5 coastlines) stored in Supabase PostgreSQL with original images in Supabase Storage
-- Client-side filtering by category (All / Leaves / Coastlines) and sorting (D high→low, D low→high, name A→Z)
-- Each specimen card shows fractal dimension, R², complexity class badge, and interpretation text
-- **Specimen Detail** — expandable panel with inline D3 log-log chart showing the specimen's original regression data
-
-### Compare Mode
-
-- **Dual-slot (A / B) comparison** — upload images or select gallery specimens into each slot
-- Full independent preprocessing controls per slot (mode, threshold, sensitivity toggles)
-- **Overlaid log-log chart** (D3.js) — shared axes, color-coded series (sky-400 / orange-400), HTML legend
-- **Metric cards** — ΔD, R² comparison, quality scores, conclusion text with D-value bars
-- **Comparison PDF export** — 2-page jsPDF report with side-by-side metrics and dual chart
-
-### Fractal Explorer
-
-- **Five standard mathematical fractals** with known theoretical dimensions:
-
-  | Fractal | Theoretical D |
-  |---------|:---:|
-  | Cantor Set | 0.6309 |
-  | Koch Curve | 1.2619 |
-  | Koch Snowflake | 1.2619 |
-  | Sierpiński Triangle | 1.5850 |
-  | Sierpiński Carpet | 1.8928 |
-
-- Iteration depth slider with per-fractal max clamping and numbered step buttons
-- Generated fractal image with **full-resolution lightbox** — scroll-to-zoom (cursor-focal), drag-to-pan, 0.25×–8× range, pixel-perfect rendering at ≥2× zoom
-- Results table showing computed vs theoretical D, error %, R², box counts, and scale range
-
-### Report Export
-
-- Client-side **2-page PDF** via jsPDF (no server round-trip):
-  - **Page 1:** Original + binary images, D, R², quality score, reliability badge, parameters, interpretation with complexity class, statistical summary (SE, 95% CI, foreground ratio), warnings
-  - **Page 2:** High-DPI log-log chart captured from the live D3 SVG via `XMLSerializer` → 2× canvas, sensitivity analysis with stability conclusion
-- Saves as `FractalVision_Report_{timestamp}.pdf`
-
-### Coastline Paradox — Interactive Educational Demo
-
-- Demonstrates the **Richardson coastline paradox** — measuring a coastline with smaller rulers yields a longer total length, forming the intuitive foundation for fractal dimension
-- **High-resolution fractal coastline** — ~25,601 points generated via multi-frequency sinusoidal base + 7 levels of midpoint displacement
-- **Ruler walking algorithm** — greedy walker at configurable ruler size (5–100px slider)
-- **Interactive HTML5 Canvas** with full zoom/pan:
-  - Scroll-wheel zoom (centered on cursor), mouse drag to pan, touch support (pinch-to-zoom)
-  - Minimap, zoom badge, scale bar, and "Reset View" button
-- **D3 Richardson chart** — log-log plot of ruler size vs measured length with power-law curve fit
-
-### WASM Benchmark Engine
-
-- **C++ box-counting algorithm** compiled to WebAssembly via Emscripten 6.0.0
-- `/benchmarks` page: drag-and-drop image upload → runs both JS and WASM implementations with `performance.now()` timing
-- Agreement badge, metric cards, speedup banner, and SVG bar chart
-- First WASM run ~200ms (cold start — module initialization); subsequent runs typically ~1ms
-- **Entirely client-side** — no server requests during benchmarking
-
-### Scientific Documentation
-
-- **Methodology page** — 5 academic sections: fractal dimension theory, box-counting algorithm, log-log regression, preprocessing pipeline, quality metrics
-- **Limitations page** — 5 sections with amber accent: rasterization constraints, finite scale range, threshold sensitivity, image quality, method-level limitations. Includes fractal dimension estimator comparison table.
+**Live Application:** [https://fractalvision-frontend.vercel.app](https://fractalvision-frontend.vercel.app)  
+**Backend Repository:** [M3hul-raj/fractalvision-backend](https://github.com/M3hul-raj/fractalvision-backend)
 
 ---
 
 ## Architecture
 
-```
-┌─────────────────┐       ┌─────────────────────┐       ┌──────────────┐
-│  Browser (SPA)  │──────▸│  FastAPI Backend     │──────▸│   Supabase   │
-│                 │       │  Google Cloud Run    │       │  PostgreSQL  │
-│  Next.js 16     │◂──────│  (us-central1)       │       │  + Storage   │
-│  React 19       │       │                     │       └──────────────┘
-│  TypeScript 5   │       │  OpenCV · NumPy     │              ▲
-│  Zustand        │       │  SciPy · Python 3.14│              │
-│  D3.js          │       └─────────────────────┘              │
-│  Framer Motion  │                                            │
-│  Emscripten WASM│                                            │
-│  jsPDF          │                                            │
-│                 │────────────────────────────────────────────▸│
-│  @supabase/js   │   Gallery data + specimen images (direct)  │
-└─────────────────┘                                            │
-```
+```mermaid
+flowchart LR
+    subgraph Browser["Browser (Next.js 16 · React 19 · TypeScript)"]
+        UI["6 Interactive Modules\n/lab · /compare · /explorer\n/benchmarks · /coastline-paradox · /gallery"]
+        State["Zustand Stores + D3.js + jsPDF"]
+        WASM["Emscripten C++ WASM Engine\n(/benchmarks only)"]
+        UI --> State
+        UI --> WASM
+    end
 
-- **State management:** Zustand stores — `analyzerStore` (lab page) and `compareStore` (compare page, fully isolated)
-- **Charts:** D3.js with SVG rendering, auto-scaled axes, comparison overlays, residual plots
-- **Gallery data:** Supabase JS client reads `specimens` and `standard_fractals` tables directly (no backend proxy)
-- **Analysis:** All image processing and box-counting runs server-side on FastAPI — OpenCV provides Otsu, adaptive threshold, Canny, morphological ops
-- **WASM benchmark:** Entirely client-side — C++ box-counting compiled via Emscripten, compared against pure TypeScript implementation
+    subgraph CloudRun["Google Cloud Run (us-central1)"]
+        API["FastAPI + OpenCV + SciPy\nPOST /api/v1/analyze\nPOST /api/v1/fractals/{id}/generate"]
+    end
 
----
+    subgraph Supabase["Supabase (Managed PostgreSQL + Storage)"]
+        DB["specimens (12 rows)\nstandard_fractals (5 rows)"]
+        STR["Specimen Image Bucket"]
+    end
 
-## Tech Stack
-
-### Frontend
-
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Next.js (App Router) | 16.2.7 | React framework with server components |
-| React | 19.2.4 | UI library |
-| TypeScript | ^5 | Static typing across the entire codebase |
-| Tailwind CSS | v4 | Utility-first CSS with `@tailwindcss/postcss` |
-| D3.js | ^7.9.0 | SVG-based log-log, residual, and Richardson charts |
-| Zustand | ^5.0.14 | Lightweight state management (2 stores) |
-| Framer Motion | ^12.40.0 | Page transitions and micro-animations |
-| jsPDF | ^4.2.1 | Client-side PDF report generation |
-| @supabase/supabase-js | ^2.107.0 | Gallery data and specimen image fetching |
-| @vercel/analytics | ^2.0.1 | Production analytics |
-| Emscripten (emcc) | 6.0.0 | C++ → WebAssembly compiler for benchmark engine |
-
-### Backend ([fractalvision-backend](https://github.com/M3hul-raj/fractalvision-backend))
-
-| Technology | Purpose |
-|------------|---------|
-| FastAPI | ASGI web framework |
-| Python 3.14 | Runtime |
-| opencv-python-headless | Image processing, thresholding, edge detection |
-| numpy + scipy | Array operations, OLS regression |
-| slowapi | IP-based rate limiting |
-| pydantic-settings | Typed configuration |
-| supabase | Database client (migration scripts) |
-
-### Infrastructure
-
-| Service | Purpose | Cost |
-|---------|---------|------|
-| Vercel | Frontend CDN (auto-deploy on push to `main`) | Free |
-| Google Cloud Run | Backend API (us-central1, 1 GiB RAM, scales to zero) | Free |
-| Supabase | PostgreSQL database + Storage | Free |
-| cron-job.org | Keep-alive pings (backend every 5 min, Supabase daily) | Free |
-| GitHub | Version control ([M3hul-raj](https://github.com/M3hul-raj)) | Free |
-
-**Total hosting cost: $0/month**
-
----
-
-## Mathematical Background
-
-The **box-counting (Minkowski–Bouligand) dimension** is estimated by covering a binary image with a grid of square boxes of side length ε, counting the number of occupied boxes N(ε), and repeating across decreasing scales (powers of 2: ε ∈ {4, 8, 16, 32, …, image_size/4}).
-
-The fractal dimension is defined as:
-
-```
-D = lim(ε→0) log N(ε) / log(1/ε)
-```
-
-In practice, D is the **slope of the ordinary least-squares regression line** fitted to the points (log(1/ε), log N(ε)). The coefficient of determination R² measures how well the data conforms to a power law.
-
-FractalVision Lab uses `scipy.stats.linregress` on the backend and reports D with:
-- **95% confidence interval** (D ± 1.96 · SE)
-- **Standard error** of the slope
-- **Quality score** (0–100) incorporating R², scale count, foreground ratio, and sensitivity
-- **Reliability classification** (High ≥ 85, Medium ≥ 70, Low < 70)
-
----
-
-## Project Structure
-
-```
-src/
-├── app/                              # Next.js App Router (9 routes)
-│   ├── layout.tsx                    # Root layout — Navbar, Footer, Analytics, SEO metadata
-│   ├── globals.css                   # Global styles (Tailwind v4)
-│   ├── page.tsx                      # Landing page (hero, stats, features, tech stack)
-│   ├── lab/page.tsx                  # Analyzer Lab (main tool)
-│   ├── gallery/page.tsx              # Specimen Gallery (filter, sort, detail panels)
-│   ├── compare/page.tsx              # Compare Mode (dual upload/specimen slots)
-│   ├── explorer/page.tsx             # Fractal Explorer (generator + lightbox + results)
-│   ├── benchmarks/page.tsx           # WASM Benchmark (JS vs WASM comparison)
-│   ├── methodology/page.tsx          # Methodology (5 academic sections)
-│   ├── coastline-paradox/page.tsx    # Coastline Paradox (interactive ruler demo)
-│   └── limitations/page.tsx          # Scientific Limitations (5 sections)
-│
-├── components/
-│   ├── layout/                       # Navbar (9 links + mobile menu), Footer, PageShell
-│   ├── analyzer/                     # ImageUploader, PreprocessingControls, ResultCard,
-│   │                                 # ReportButton, PipelineViewer, BoxSizeSlider,
-│   │                                 # GridOverlay, QualityScore, ScaleRangeSelector
-│   ├── charts/                       # LogLogChart, ResidualChart (D3.js)
-│   ├── benchmarks/                   # BenchmarkChart (SVG bar chart)
-│   ├── compare/                      # ComparePanel, CompareResults, DualLogLogChart,
-│   │                                 # ComparisonPanel, SpecimenPickerModal
-│   ├── explorer/                     # ExplorerLogLogChart (prop-based D3)
-│   └── gallery/                      # SpecimenCard, SpecimenDetail (inline D3 chart)
-│
-├── hooks/
-│   └── useAutoAnalyze.ts             # Auto re-analyze on settings change (600ms debounce)
-│
-├── store/
-│   ├── analyzerStore.ts              # Zustand — file, result, settings, error, sensitivity
-│   └── compareStore.ts               # Zustand — two independent slots (A+B)
-│
-├── lib/
-│   ├── api/client.ts                 # analyzeImage(), generateFractal(), listFractals()
-│   ├── supabase/                     # Supabase client + queries (specimens, fractals)
-│   ├── data/                         # Static fallback data, interpretation bands
-│   ├── report/                       # PDF generators (single analysis + comparison)
-│   └── wasm/                         # WASM loader, JS box-counting, image preprocessor
-│
-└── types/                            # TypeScript types (analysis, specimen, api)
-
-wasm/                                 # C++ source (NOT in src/)
-├── box_counting.cpp                  # C++ box-counting + OLS regression
-├── compile.bat                       # Windows build script
-└── compile.sh                        # Unix/Mac build script
-
-public/wasm/                          # Compiled WASM output (committed to git)
-├── box_counting.js                   # Emscripten glue code (~12 KB)
-└── box_counting.wasm                 # Compiled WebAssembly binary (~139 KB)
+    UI -->|"Multipart image upload / JSON"| API
+    UI -->|"Direct read-only queries (@supabase/supabase-js)"| DB
+    UI -->|"Public specimen images"| STR
 ```
 
 ---
 
-## WASM Build System
+## Application Modules (6 Interactive + 3 Static)
 
-The `/benchmarks` page uses a C++ box-counting engine compiled to WebAssembly. The compiled files are **committed to git** because Vercel's build environment does not include Emscripten.
+The app exposes **9 Next.js App Router pages**: **6 interactive modules** and **3 informational/documentation pages**.
 
-**To recompile** (requires [Emscripten 6.0.0](https://emscripten.org/) in PATH):
-
-```powershell
-# Windows
-cd fractalvision-frontend
-wasm\compile.bat
-
-# macOS / Linux
-cd fractalvision-frontend
-chmod +x wasm/compile.sh && wasm/compile.sh
-```
-
-Output: `public/wasm/box_counting.js` + `public/wasm/box_counting.wasm`
+| # | Route | Kind | What It Does |
+|---:|---|---|---|
+| 1 | `/lab` | Interactive | Upload an image, configure 3 analysis modes × 3 thresholding methods + blur/denoise/sensitivity, inspect grid overlays (`PipelineViewer` + `BoxSizeSlider`), toggle scales (`ScaleRangeSelector` live client OLS), overlay specimens, and export a 2-page PDF. |
+| 2 | `/compare` | Interactive | Side-by-side dual-slot (`A`/`B`) comparison of uploaded images or gallery specimens with independent preprocessing, overlaid `DualLogLogChart`, $\Delta D$ metrics, and Comparison PDF export. |
+| 3 | `/explorer` | Interactive | Generate 5 standard mathematical fractals (Cantor Set, Koch Curve, Koch Snowflake, Sierpiński Triangle, Sierpiński Carpet) across configurable iterations, inspect in a pan/zoom lightbox, and compare computed vs theoretical $D$. |
+| 4 | `/benchmarks` | Interactive | Client-side Otsu preprocessing and `performance.now()` comparison between pure TypeScript (`boxCountingJs.ts`) and Emscripten C++ WebAssembly (`box_counting.wasm`). |
+| 5 | `/coastline-paradox` | Interactive | Client-side Richardson coastline paradox simulation (~25,601-point fractal coastline, greedy ruler walker 5–100 px, interactive HTML5 Canvas zoom/pan + minimap, D3 power-law curve). |
+| 6 | `/gallery` | Interactive | Browse, filter (`All`/`Leaves`/`Coastlines`), and sort 12 dissertation specimens stored in Supabase Postgres, with modal inspection and inline D3 log-log plots. |
+| — | `/`, `/methodology`, `/limitations` | Static | Landing overview and 2 scientific documentation pages. |
 
 ---
 
-## Getting Started
+## Tech Stack (Actual)
 
-### Prerequisites
+| Layer | Technology | Version |
+|---|---|---|
+| Framework | Next.js (App Router) | 16.2.7 |
+| UI Library | React | 19.2.4 |
+| Language | TypeScript (strict) | ^5 |
+| Styling | Tailwind CSS | v4 |
+| Visualization | D3.js + HTML5 Canvas | ^7.9.0 |
+| State Management | Zustand | ^5.0.14 |
+| Animation | Framer Motion | ^12.40.0 |
+| PDF Export | jsPDF | ^4.2.1 |
+| Database Client | `@supabase/supabase-js` | ^2.107.0 |
+| WASM Toolchain | Emscripten (`emcc`) | 6.0.0 |
+| Testing | Vitest | ^4.1.10 |
 
-- [Node.js](https://nodejs.org/) 18+
-- [fractalvision-backend](https://github.com/M3hul-raj/fractalvision-backend) running on port 8000 (required for Analyzer Lab, Fractal Explorer, and Compare Mode — Gallery works independently via Supabase)
+---
 
-### Installation
+## WASM vs JavaScript Benchmark
+
+Reproducible benchmark running `src/lib/wasm/boxCountingJs.ts` against `public/wasm/box_counting.{js,wasm}` in Node `v24.13.0` (`V8 13.6.233.17-node.37`, `win32 x64`, `Intel i5-12500H`, 10 warm-up runs, median of 30 alternating runs):
+
+| Case | JS Median | WASM Median | Ratio (JS / WASM) | Winner |
+|---|---:|---:|---:|---|
+| `128×128 (sparse 1%)` | 0.040 ms | 0.073 ms | 0.55× | **JS (1.83×)** |
+| `128×128 (dense 100%)` | 0.008 ms | 0.032 ms | 0.25× | **JS (4.02×)** |
+| `256×256 (dense 100%)` | 0.029 ms | 0.041 ms | 0.71× | **JS (1.42×)** |
+| `512×512 (sparse 1%)` | 0.591 ms | 0.352 ms | 1.68× | WASM (1.68×) |
+| `1024×1024 (sparse 1%)` | 2.402 ms | 1.426 ms | 1.68× | WASM (1.68×) |
+| `2048×2048 (sparse 1%)` | 10.121 ms | 6.208 ms | 1.63× | WASM (1.63×) |
+| `cantor_set (1024×1024)` | 6.358 ms | 4.197 ms | 1.51× | WASM (1.51×) |
+| `koch_curve (1024×1024)` | 6.012 ms | 4.156 ms | 1.45× | WASM (1.45×) |
+| `sierpinski_triangle (1024×1024)` | 4.733 ms | 3.317 ms | 1.43× | WASM (1.43×) |
+| `sierpinski_carpet (1024×1024)` | 3.848 ms | 2.587 ms | 1.49× | WASM (1.49×) |
+
+**Key takeaway:** V8 TurboFan JIT executes tight loops over `Uint8Array` efficiently, so on small (`128×128`) or early-exit dense (`256×256 dense`) images, JS beats WASM because `runBoxCountingWasm` pays `_malloc`, `HEAPU8.set`, C++ `std::ostringstream` JSON serialization/re-parsing, `UTF8ToString`, and `JSON.parse()` on every call. Full tables and breakdown: [docs/BENCHMARK.md](docs/BENCHMARK.md).
+
+---
+
+## How to Run Locally
 
 ```bash
-# 1. Clone
 git clone https://github.com/M3hul-raj/fractalvision-frontend.git
 cd fractalvision-frontend
-
-# 2. Install dependencies
 npm install
-
-# 3. Create .env.local
-cat > .env.local << 'EOF'
-NEXT_PUBLIC_SUPABASE_URL=<your-supabase-project-url>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-EOF
-
-# 4. Start dev server
+cp .env.example .env.local
 npm run dev
-# → http://localhost:3000
+# http://localhost:3000
 ```
 
-### Environment Variables
+Environment variables (`.env.local`):
 
 | Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anonymous key (public, read-only) |
-| `NEXT_PUBLIC_API_URL` | Yes | Backend API base URL (default: `http://localhost:8000/api/v1`) |
+|---|---|---|
+| `NEXT_PUBLIC_API_URL` | Yes | Backend API base URL (`http://localhost:8000/api/v1` for local dev) |
+| `NEXT_PUBLIC_SUPABASE_URL` | Optional | Supabase project URL (needed only for `/gallery` and specimen picker) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional | Supabase public read-only anon key |
 
 ---
 
-## Deployment
+## Test, Quality & Benchmark Commands
 
-Deployed on **Vercel** with GitHub auto-deploy on push to `main`.
-
-| Setting | Value |
-|---------|-------|
-| Framework preset | Next.js (auto-detected) |
-| Build command | `next build` |
-| Environment variables | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_API_URL` |
-| Analytics | Vercel Analytics via `@vercel/analytics` |
-
----
-
-## Backend
-
-**Repository:** [fractalvision-backend](https://github.com/M3hul-raj/fractalvision-backend)
-
-FastAPI backend handling all image processing (OpenCV), box-counting, log-log regression (SciPy), quality scoring, threshold and rotation sensitivity analysis, fractal generation, and complexity classification. Deployed on Google Cloud Run (free tier, us-central1).
+```bash
+npm run lint       # ESLint (0 errors, 0 warnings)
+npm run typecheck  # tsc --noEmit
+npm run test       # Vitest (9 tests across 3 files: boxCountingJs, wasmConsistency, apiClient)
+npm run build      # Next.js production build
+npm run benchmark  # Reproducible JS vs WASM benchmark across sizes & fixtures
+```
 
 ---
 
-## Acknowledgments
+## Scientific & Engineering Limitations
 
-This project is part of a **Mathematics dissertation** on fractal dimensions of natural patterns — leaves and coastlines analyzed through the box-counting method.
-
-Built with Next.js, FastAPI, OpenCV, D3.js, Supabase, and Emscripten.
+- **Raster quantization & finite scale range:** Box-counting operates on pixel grids resized to max `1024 px` across powers of 2 (`4..min(w,h)/4`). Diagonal aliasing and finite iteration depths produce 1–5% error vs continuous Hausdorff/theoretical dimensions; client-side JS/WASM uses a single grid origin (causing ~0.10 underestimation on `sierpinski_carpet`), whereas the backend uses 4 grid offsets.
+- **Preprocessing sensitivity:** Computed $D$ describes the *binarized mask*, not the raw physical specimen; illumination gradients, noise, or manual threshold choices shift $D$.
+- **WASM scope & overhead:** WASM is used only on `/benchmarks`; it uses JSON string marshaling across the JS–WASM boundary, limiting speedup to ~1.4×–1.7× on 1024×1024 inputs.
+- **No server-side analysis persistence:** Results live only in browser Zustand/session storage and PDF exports; `/gallery` reads a static 12-specimen dataset.
+- **Backend cold starts / hosting constraints:** Cloud Run scales to zero when idle; keep-alive cron pings reduce cold starts, while Vercel Hobby requires strictly non-commercial usage.

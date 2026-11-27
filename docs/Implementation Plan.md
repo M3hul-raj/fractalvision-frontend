@@ -234,7 +234,7 @@ No server requests. Entirely client-side.
 
 ## 7. Database Schema (Supabase PostgreSQL)
 
-Two read-only tables, pre-seeded. SQL migration lives at `c:\Users\mehul\Fractal Project\supabase_migration.sql`.
+Two read-only tables, pre-seeded. Versioned SQL migrations live in `fractalvision-backend/migrations/` (`0001_initial_schema.sql`, `0002_seed_reference_data.sql`).
 
 ### `specimens` table (12 rows: 7 leaves + 5 coastlines)
 
@@ -820,8 +820,8 @@ JSON is built manually with `std::ostringstream` — no external JSON libraries.
 
 ### Frontend (`.env.local`)
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://qpjfwazvcqdvrvninmko.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...  (truncated)
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-project-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-supabase-anon-key>
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ```
 
@@ -830,8 +830,8 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 
 ### Backend (`.env`)
 ```env
-SUPABASE_URL=https://qpjfwazvcqdvrvninmko.supabase.co
-SUPABASE_SERVICE_KEY=eyJ...  (truncated)
+SUPABASE_URL=<your-supabase-project-url>
+SUPABASE_SERVICE_KEY=<your-supabase-service-role-key>
 ALLOWED_ORIGINS=http://localhost:3000,https://fractalvision-frontend.vercel.app
 ```
 

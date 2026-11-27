@@ -5,7 +5,7 @@ import Footer from "@/components/layout/Footer";
 import { Analytics } from "@vercel/analytics/react"; // 1. ADDED IMPORT
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://fractalvision.vercel.app"),
+  metadataBase: new URL("https://fractalvision-frontend.vercel.app"),
   title: {
     default: "FractalVision Lab",
     template: "%s | FractalVision Lab",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     type: "website",
-    url: "https://fractalvision.vercel.app",
+    url: "https://fractalvision-frontend.vercel.app",
     title: "FractalVision Lab — Interactive Fractal Dimension Analyzer",
     description:
       "Upload leaves, coastlines, or natural textures and watch their fractal dimension emerge through live box-counting and mathematical visualization.",
