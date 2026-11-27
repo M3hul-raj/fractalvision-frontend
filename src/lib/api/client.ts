@@ -83,12 +83,14 @@ export async function generateFractal(
   });
   if (!res.ok) {
     const errText = await res.text();
+    let detailMessage: string | null = null;
     try {
       const errJson = JSON.parse(errText);
-      throw new Error(errJson.detail || errJson.message || `Generate failed: ${res.status}`);
+      detailMessage = errJson?.detail || errJson?.message || null;
     } catch {
-      throw new Error(`Generate failed: ${res.status} - ${errText}`);
+      detailMessage = null;
     }
+    throw new Error(detailMessage ?? `Generate failed: ${res.status} - ${errText}`);
   }
   return res.json();
 }
