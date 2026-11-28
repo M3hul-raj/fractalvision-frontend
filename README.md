@@ -78,22 +78,22 @@ The app exposes **9 Next.js App Router pages**: **6 interactive modules** and **
 
 ## WASM vs JavaScript Benchmark
 
-Reproducible benchmark running `src/lib/wasm/boxCountingJs.ts` against `public/wasm/box_counting.{js,wasm}` in Node `v24.13.0` (`V8 13.6.233.17-node.37`, `win32 x64`, `Intel i5-12500H`, 10 warm-up runs, median of 30 alternating runs):
+Reproducible benchmark running `src/lib/wasm/boxCountingJs.ts` against `public/wasm/box_counting.{js,wasm}` (using a flat `Float64Array` ABI in `src/lib/wasm/wasmAbi.ts`, `13,114`-byte `.wasm`) in Node `v24.13.0` (`V8 13.6.233.17-node.37`, `win32 x64`, `Intel i5-12500H`, 10 warm-up runs, median of 30 alternating runs):
 
 | Case | JS Median | WASM Median | Ratio (JS / WASM) | Winner |
 |---|---:|---:|---:|---|
-| `128×128 (sparse 1%)` | 0.040 ms | 0.073 ms | 0.55× | **JS (1.83×)** |
-| `128×128 (dense 100%)` | 0.008 ms | 0.032 ms | 0.25× | **JS (4.02×)** |
-| `256×256 (dense 100%)` | 0.029 ms | 0.041 ms | 0.71× | **JS (1.42×)** |
-| `512×512 (sparse 1%)` | 0.591 ms | 0.352 ms | 1.68× | WASM (1.68×) |
-| `1024×1024 (sparse 1%)` | 2.402 ms | 1.426 ms | 1.68× | WASM (1.68×) |
-| `2048×2048 (sparse 1%)` | 10.121 ms | 6.208 ms | 1.63× | WASM (1.63×) |
-| `cantor_set (1024×1024)` | 6.358 ms | 4.197 ms | 1.51× | WASM (1.51×) |
-| `koch_curve (1024×1024)` | 6.012 ms | 4.156 ms | 1.45× | WASM (1.45×) |
-| `sierpinski_triangle (1024×1024)` | 4.733 ms | 3.317 ms | 1.43× | WASM (1.43×) |
-| `sierpinski_carpet (1024×1024)` | 3.848 ms | 2.587 ms | 1.49× | WASM (1.49×) |
+| `128×128 (sparse 1%)` | 0.054 ms | 0.052 ms | 1.03× | Tied (~1.0×) |
+| `128×128 (dense 100%)` | 0.010 ms | 0.005 ms | 1.96× | WASM (1.96×) |
+| `256×256 (dense 100%)` | 0.034 ms | 0.017 ms | 2.00× | WASM (2.00×) |
+| `512×512 (sparse 1%)` | 0.724 ms | 0.346 ms | 2.09× | WASM (2.09×) |
+| `1024×1024 (sparse 1%)` | 2.998 ms | 1.560 ms | 1.92× | WASM (1.92×) |
+| `2048×2048 (sparse 1%)` | 15.845 ms | 9.285 ms | 1.71× | WASM (1.71×) |
+| `cantor_set (1024×1024)` | 7.289 ms | 3.932 ms | 1.85× | WASM (1.85×) |
+| `koch_curve (1024×1024)` | 7.173 ms | 3.822 ms | 1.88× | WASM (1.88×) |
+| `sierpinski_triangle (1024×1024)` | 6.320 ms | 3.398 ms | 1.86× | WASM (1.86×) |
+| `sierpinski_carpet (1024×1024)` | 5.545 ms | 3.320 ms | 1.67× | WASM (1.67×) |
 
-**Key takeaway:** V8 TurboFan JIT executes tight loops over `Uint8Array` efficiently, so on small (`128×128`) or early-exit dense (`256×256 dense`) images, JS beats WASM because `runBoxCountingWasm` pays `_malloc`, `HEAPU8.set`, C++ `std::ostringstream` JSON serialization/re-parsing, `UTF8ToString`, and `JSON.parse()` on every call. Full tables and breakdown: [docs/BENCHMARK.md](docs/BENCHMARK.md).
+**Key takeaway:** Switching from JSON strings to a reusable `Float64Array` (`HEAPF64`) output buffer shrank `box_counting.wasm` from `142,163` B to `13,114` B, flipped small dense runs from slower to `~2.0×` faster, and improved `1024×1024` fractal fixture speedups from `1.46×–1.51×` to `1.67×–1.90×` (with `128×128 sparse` tied at `1.03×` due to fixed buffer copy vs V8 JIT). Full before/after tables: [docs/BENCHMARK.md](docs/BENCHMARK.md).
 
 ---
 
@@ -118,14 +118,15 @@ Environment variables (`.env.local`):
 
 ---
 
-## Test, Quality & Benchmark Commands
+## Test, Quality, Benchmark & Smoke Commands
 
 ```bash
 npm run lint       # ESLint (0 errors, 0 warnings)
 npm run typecheck  # tsc --noEmit
-npm run test       # Vitest (9 tests across 3 files: boxCountingJs, wasmConsistency, apiClient)
+npm run test       # Vitest (12 tests across 4 files: boxCountingJs, wasmConsistency, apiClient, smokeLive)
 npm run build      # Next.js production build
 npm run benchmark  # Reproducible JS vs WASM benchmark across sizes & fixtures
+npm run smoke      # Post-deploy live check (frontend 200, /health, CORS, 415 disguised file, /analyze fixture)
 ```
 
 ---
@@ -134,6 +135,6 @@ npm run benchmark  # Reproducible JS vs WASM benchmark across sizes & fixtures
 
 - **Raster quantization & finite scale range:** Box-counting operates on pixel grids resized to max `1024 px` across powers of 2 (`4..min(w,h)/4`). Diagonal aliasing and finite iteration depths produce 1–5% error vs continuous Hausdorff/theoretical dimensions; client-side JS/WASM uses a single grid origin (causing ~0.10 underestimation on `sierpinski_carpet`), whereas the backend uses 4 grid offsets.
 - **Preprocessing sensitivity:** Computed $D$ describes the *binarized mask*, not the raw physical specimen; illumination gradients, noise, or manual threshold choices shift $D$.
-- **WASM scope & overhead:** WASM is used only on `/benchmarks`; it uses JSON string marshaling across the JS–WASM boundary, limiting speedup to ~1.4×–1.7× on 1024×1024 inputs.
+- **WASM scope:** WASM is used only on `/benchmarks`; while the typed-array ABI eliminated JSON overhead, V8 TurboFan executes flat `Uint8Array` loops fast enough that realistic WASM gains are `~1.7×–2.1×` (tied on tiny `128×128` sparse inputs).
 - **No server-side analysis persistence:** Results live only in browser Zustand/session storage and PDF exports; `/gallery` reads a static 12-specimen dataset.
 - **Backend cold starts / hosting constraints:** Cloud Run scales to zero when idle; keep-alive cron pings reduce cold starts, while Vercel Hobby requires strictly non-commercial usage.

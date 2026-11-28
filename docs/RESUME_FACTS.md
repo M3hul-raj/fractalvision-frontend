@@ -20,14 +20,14 @@ Every claim below is tied to a command you can re-run locally or in CI. Observed
 - **Proof command:** `find src/app -name page.tsx | sort` (or `Get-ChildItem -Recurse -Filter page.tsx src\app` on Windows).
 
 ## 3. WASM vs JavaScript Benchmark
-- **Claim:** End-to-end benchmark (10 warm-up runs, median of 30 alternating runs, same-realm Node `v24.13.0` / V8 `13.6.233.17-node.37`, Windows x64 i5-12500H) shows C++ WASM (`-O2`, `142,163` bytes) is **1.40×–1.51× faster** on `1024×1024` fractal fixtures (`2.59–4.20 ms` vs `3.85–6.36 ms`) and **1.32×–1.68× faster** on `512×512`–`2048×2048` synthetic inputs, while **JS is 1.42×–4.02× faster** on small/early-exit images (`128×128`, `256×256 dense`) due to V8 TurboFan speed and JS–WASM buffer/JSON marshaling overhead.
+- **Claim:** Switching the JS–WASM boundary from JSON strings (`142,163` B `.wasm`) to a shared `Float64Array` (`HEAPF64`) ABI (`13,114` B `.wasm`) in Node `v24.13.0` (`V8 13.6.233.17-node.37`, `win32 x64`, `i5-12500H`, 10 warm-up, median of 30 alternating runs) eliminated the small-image regression (`128×128 dense`: `0.046 ms` → `0.005 ms`, `1.96×` faster than JS; `256×256 dense`: `0.056 ms` → `0.017 ms`, `2.00×` faster; `128×128 sparse`: tied at `1.03×`) and improved `1024×1024` fractal fixture speedups from `1.46×–1.51×` to **`1.67×–1.90×`** (`3.32–3.93 ms` vs `5.55–7.29 ms`).
 - **Proof command:** `npm run benchmark` (in `fractalvision-frontend/`). See [docs/BENCHMARK.md](BENCHMARK.md).
 - **Accurate resume sentence:**
-  > Built and benchmarked a C++ WebAssembly (Emscripten `-O2`) box-counting engine against pure TypeScript in V8 across 128×128–2048×2048 images (10 warm-up, median of 30 runs), achieving 1.40×–1.51× speedup on 1024×1024 fractal fixtures while identifying JS–WASM boundary and JSON-serialization overhead that makes JS 1.4×–4.0× faster on small/early-exit inputs.
+  > Replaced JSON string marshaling with a shared Float64 typed-array ABI in a C++ WebAssembly (Emscripten `-O2`) box-counting engine, shrinking the `.wasm` binary by 91% (`142 KB` → `13 KB`), eliminating the small-image regression (`128×128 dense`: `0.046 ms` → `0.005 ms`), and achieving `1.67×–1.90×` median speedup over V8 TypeScript on `1024×1024` fractal fixtures.
 
-## 4. Test Counts & CI Checks
-- **Frontend:** `9` Vitest tests across `3` files (`tests/boxCountingJs.test.ts`: 5, `tests/wasmConsistency.test.ts`: 1, `tests/apiClient.test.ts`: 3), plus ESLint (`0` errors, `0` warnings), `tsc --noEmit` (`0` errors), and `next build`.
-  - **Proof commands (in `fractalvision-frontend/`):** `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`
+## 4. Test Counts, CI & Post-Deploy Smoke Script
+- **Frontend:** `12` Vitest tests across `4` files (`tests/boxCountingJs.test.ts`: 5, `tests/wasmConsistency.test.ts`: 1, `tests/apiClient.test.ts`: 3, `tests/smokeLive.test.ts`: 3), plus ESLint (`0` errors, `0` warnings), `tsc --noEmit` (`0` errors), and `next build`.
+  - **Proof commands (in `fractalvision-frontend/`):** `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build`, `npm run smoke` (live post-deploy check)
 - **Backend:** `52` pytest tests (`51` unit/API/security tests + `1` live PostgreSQL migration test when `DATABASE_URL` is set) and Ruff lint (`0` errors).
   - **Proof commands (in `fractalvision-backend/`):** `ruff check .` and `pytest tests/ -v`
 

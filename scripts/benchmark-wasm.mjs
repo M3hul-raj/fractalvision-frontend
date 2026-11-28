@@ -4,7 +4,8 @@
  *
  * Executes the actual TypeScript implementation (src/lib/wasm/boxCountingJs.ts)
  * and the committed Emscripten WASM build (public/wasm/box_counting.{js,wasm})
- * in the same V8 realm, with warm-up iterations and median-of-N timings.
+ * using the shared typed-array ABI (src/lib/wasm/wasmAbi.ts) in the same V8 realm,
+ * with warm-up iterations and median-of-N timings.
  *
  * Usage:
  *   npm run benchmark
@@ -39,8 +40,8 @@ function parseArgs(argv) {
   return opts;
 }
 
-function loadRunBoxCountingJs() {
-  const tsPath = path.join(FRONTEND_ROOT, "src/lib/wasm/boxCountingJs.ts");
+function loadTsModule(relPath) {
+  const tsPath = path.join(FRONTEND_ROOT, relPath);
   const tsSource = fs.readFileSync(tsPath, "utf8");
   const { outputText } = ts.transpileModule(tsSource, {
     compilerOptions: {
@@ -48,14 +49,13 @@ function loadRunBoxCountingJs() {
       target: ts.ScriptTarget.ES2020,
     },
   });
-  // Load inside a temp CJS file in the main V8 realm (avoids vm.runInNewContext TypedArray deopts).
   const tmpPath = path.join(
     os.tmpdir(),
-    `fractalvision-bc-js-${process.pid}-${Date.now()}.cjs`,
+    `fractalvision-${path.basename(relPath, ".ts")}-${process.pid}-${Date.now()}.cjs`,
   );
   fs.writeFileSync(tmpPath, outputText, "utf8");
   try {
-    return require(tmpPath).runBoxCountingJs;
+    return require(tmpPath);
   } finally {
     fs.unlinkSync(tmpPath);
   }
@@ -80,7 +80,7 @@ function summarize(samples) {
 function makeSyntheticPattern(size, densityMode) {
   const pixels = new Uint8Array(size * size);
   if (densityMode === "dense") {
-    pixels.fill(255); // immediate break in boxCount -> isolates boundary/marshaling overhead
+    pixels.fill(255); // immediate break in boxCount -> isolates boundary overhead
   } else {
     for (let i = 0; i < pixels.length; i += 97) {
       pixels[i] = 255; // ~1.03% sparse pattern -> exercises inner scan loops
@@ -101,7 +101,6 @@ function benchmarkCase({ name, width, height, pixels, warmup, runs, runBoxCounti
   let wasmRes;
 
   for (let i = 0; i < runs; i++) {
-    // Alternate order to reduce thermal/GC bias across runs
     if (i % 2 === 0) {
       const t0 = performance.now();
       jsRes = runBoxCountingJs(pixels, width, height);
@@ -147,7 +146,17 @@ function benchmarkCase({ name, width, height, pixels, warmup, runs, runBoxCounti
   };
 }
 
-function measureWasmBreakdown({ width, height, pixels, wasm, warmup, runs }) {
+function measureWasmBreakdown({
+  width,
+  height,
+  pixels,
+  wasm,
+  outPtr,
+  WASM_MAX_SCALES,
+  readWasmResult,
+  warmup,
+  runs,
+}) {
   const copyTimes = [];
   const kernelTimes = [];
   const decodeTimes = [];
@@ -158,13 +167,11 @@ function measureWasmBreakdown({ width, height, pixels, wasm, warmup, runs }) {
     wasm.HEAPU8.set(pixels, ptr);
     const t1 = performance.now();
 
-    const resPtr = wasm._wasm_run_analysis(ptr, width, height);
+    const scaleCount = wasm._wasm_run_analysis(ptr, width, height, outPtr, WASM_MAX_SCALES);
     const t2 = performance.now();
 
-    const json = wasm.UTF8ToString(resPtr);
-    wasm._wasm_free(resPtr);
+    readWasmResult(wasm.HEAPF64, outPtr, scaleCount);
     wasm._free(ptr);
-    JSON.parse(json);
     const t3 = performance.now();
 
     if (record) {
@@ -179,14 +186,17 @@ function measureWasmBreakdown({ width, height, pixels, wasm, warmup, runs }) {
 
   return {
     copyMedianMs: summarize(copyTimes).median,
-    kernelAndCppJsonMedianMs: summarize(kernelTimes).median,
-    utf8AndParseMedianMs: summarize(decodeTimes).median,
+    kernelMedianMs: summarize(kernelTimes).median,
+    readAndFreeMedianMs: summarize(decodeTimes).median,
   };
 }
 
 async function main() {
   const opts = parseArgs(process.argv.slice(2));
-  const runBoxCountingJs = loadRunBoxCountingJs();
+  const { runBoxCountingJs } = loadTsModule("src/lib/wasm/boxCountingJs.ts");
+  const { readWasmResult, WASM_MAX_SCALES, WASM_OUT_BYTES } = loadTsModule(
+    "src/lib/wasm/wasmAbi.ts",
+  );
   const createBoxCountingModule = require(
     path.join(FRONTEND_ROOT, "public/wasm/box_counting.js"),
   );
@@ -196,16 +206,19 @@ async function main() {
   const tInit0 = performance.now();
   const wasm = await createBoxCountingModule({ wasmBinary });
   const wasmInitMs = performance.now() - tInit0;
+  const outPtr = wasm._malloc(WASM_OUT_BYTES);
+  if (outPtr === 0) throw new Error("WASM output buffer malloc failed");
 
   function runWasm(pixels, width, height) {
     const ptr = wasm._malloc(pixels.length);
     if (ptr === 0) throw new Error("WASM malloc failed");
-    wasm.HEAPU8.set(pixels, ptr);
-    const resultPtr = wasm._wasm_run_analysis(ptr, width, height);
-    const json = wasm.UTF8ToString(resultPtr);
-    wasm._wasm_free(resultPtr);
-    wasm._free(ptr);
-    return JSON.parse(json);
+    try {
+      wasm.HEAPU8.set(pixels, ptr);
+      const scaleCount = wasm._wasm_run_analysis(ptr, width, height, outPtr, WASM_MAX_SCALES);
+      return readWasmResult(wasm.HEAPF64, outPtr, scaleCount);
+    } finally {
+      wasm._free(ptr);
+    }
   }
 
   const syntheticResults = [];
@@ -258,6 +271,9 @@ async function main() {
     height: 1024,
     pixels: makeSyntheticPattern(1024, "sparse"),
     wasm,
+    outPtr,
+    WASM_MAX_SCALES,
+    readWasmResult,
     warmup: opts.warmup,
     runs: opts.runs,
   });
@@ -266,9 +282,13 @@ async function main() {
     height: 1024,
     pixels: makeSyntheticPattern(1024, "dense"),
     wasm,
+    outPtr,
+    WASM_MAX_SCALES,
+    readWasmResult,
     warmup: opts.warmup,
     runs: opts.runs,
   });
+  wasm._free(outPtr);
 
   const cpus = os.cpus();
   const env = {
@@ -314,9 +334,9 @@ async function main() {
         "JS med".padStart(10) +
         "WASM med".padStart(11) +
         "JS/WASM".padStart(10) +
-        "Winner".padStart(12),
+        "Winner".padStart(14),
     );
-    console.log("-".repeat(73));
+    console.log("-".repeat(75));
     for (const r of rows) {
       const winner =
         r.speedupJsOverWasm >= 1.05
@@ -329,7 +349,7 @@ async function main() {
           `${r.jsMedianMs.toFixed(3)}ms`.padStart(10) +
           `${r.wasmMedianMs.toFixed(3)}ms`.padStart(11) +
           `${r.speedupJsOverWasm.toFixed(2)}x`.padStart(10) +
-          winner.padStart(12),
+          winner.padStart(14),
       );
     }
     console.log();
@@ -344,7 +364,7 @@ async function main() {
     ["1024x1024 dense ", breakdown1024Dense],
   ]) {
     console.log(
-      `${label}: malloc+HEAPU8.set=${b.copyMedianMs.toFixed(3)}ms | _wasm_run_analysis(C+++JSON)=${b.kernelAndCppJsonMedianMs.toFixed(3)}ms | UTF8ToString+free+JSON.parse=${b.utf8AndParseMedianMs.toFixed(3)}ms`,
+      `${label}: malloc+HEAPU8.set=${b.copyMedianMs.toFixed(3)}ms | _wasm_run_analysis(C++)=${b.kernelMedianMs.toFixed(3)}ms | HEAPF64+free=${b.readAndFreeMedianMs.toFixed(3)}ms`,
     );
   }
 }
