@@ -4,11 +4,12 @@
  * Async singleton loader and runner for the Emscripten-compiled
  * box_counting WebAssembly module.
  *
- * The module is injected into the page once and cached; subsequent calls
- * reuse the same instance.
+ * Uses a pre-allocated Float64 output buffer instead of JSON strings to avoid
+ * UTF-8 decoding and JSON serialization overhead across the JS-WASM boundary.
  */
 
 import type { JsAnalysisResult } from "./boxCountingJs";
+import { readWasmResult, WASM_MAX_SCALES, WASM_OUT_BYTES } from "./wasmAbi";
 
 // ---------------------------------------------------------------------------
 // Emscripten module typings
@@ -19,12 +20,13 @@ interface EmscriptenBoxCountingModule {
     pixelPtr: number,
     width: number,
     height: number,
+    outPtr: number,
+    maxScales: number,
   ) => number;
-  _wasm_free: (ptr: number) => void;
   _malloc: (size: number) => number;
   _free: (ptr: number) => void;
   HEAPU8: Uint8Array;
-  UTF8ToString: (ptr: number) => string;
+  HEAPF64: Float64Array;
 }
 
 declare global {
@@ -39,6 +41,7 @@ declare global {
 
 let _module: EmscriptenBoxCountingModule | null = null;
 let _loadPromise: Promise<EmscriptenBoxCountingModule> | null = null;
+let _outPtr = 0;
 
 // ---------------------------------------------------------------------------
 // Private — module initialiser
@@ -46,7 +49,6 @@ let _loadPromise: Promise<EmscriptenBoxCountingModule> | null = null;
 
 function injectScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    // Skip injection if the script tag is already present
     if (document.querySelector(`script[src="${src}"]`)) {
       resolve();
       return;
@@ -61,21 +63,18 @@ function injectScript(src: string): Promise<void> {
 }
 
 async function getModule(): Promise<EmscriptenBoxCountingModule> {
-  // Already initialised — return immediately
   if (_module !== null) return _module;
-
-  // Initialisation already in-flight — join the existing promise
   if (_loadPromise !== null) return _loadPromise;
 
   _loadPromise = (async () => {
-    // 1. Inject the Emscripten JS glue file
     await injectScript("/wasm/box_counting.js");
-
-    // 2. Instantiate the WASM module; tell Emscripten where to find the .wasm
     const mod = await createBoxCountingModule({
       locateFile: (path: string) => "/wasm/" + path,
     });
-
+    _outPtr = mod._malloc(WASM_OUT_BYTES);
+    if (_outPtr === 0) {
+      throw new Error("WASM output buffer malloc failed");
+    }
     _module = mod;
     return mod;
   })();
@@ -90,8 +89,9 @@ async function getModule(): Promise<EmscriptenBoxCountingModule> {
 /**
  * Run the box-counting + OLS regression pipeline via WebAssembly.
  *
- * Allocates a WASM heap buffer, copies the pixel data in, calls
- * _wasm_run_analysis, reads back the JSON string, then frees both pointers.
+ * Copies pixel bytes into WASM linear memory, executes _wasm_run_analysis
+ * writing directly into a reusable Float64 output buffer, reads back the
+ * numeric fields from HEAPF64, and frees the input buffer.
  */
 export async function runBoxCountingWasm(
   pixels: Uint8Array,
@@ -100,23 +100,27 @@ export async function runBoxCountingWasm(
 ): Promise<JsAnalysisResult> {
   const mod = await getModule();
 
-  // Allocate input buffer on the WASM heap
-  const ptr = mod._malloc(pixels.length);
-  if (ptr === 0) throw new Error("WASM malloc failed (out of memory)");
+  const pixelPtr = mod._malloc(pixels.length);
+  if (pixelPtr === 0) throw new Error("WASM malloc failed (out of memory)");
 
-  // NOTE: HEAPU8 must be accessed AFTER malloc — memory growth may have
-  // reallocated the backing ArrayBuffer, so we read mod.HEAPU8 fresh here.
-  mod.HEAPU8.set(pixels, ptr);
+  try {
+    // Re-read HEAPU8/HEAPF64 fresh after malloc and WASM calls in case
+    // ALLOW_MEMORY_GROWTH reallocated the underlying WebAssembly.Memory buffer.
+    mod.HEAPU8.set(pixels, pixelPtr);
 
-  // Run analysis — returns a malloc'd char* inside WASM memory
-  const resultPtr = mod._wasm_run_analysis(ptr, width, height);
+    const scaleCount = mod._wasm_run_analysis(
+      pixelPtr,
+      width,
+      height,
+      _outPtr,
+      WASM_MAX_SCALES,
+    );
+    if (scaleCount < 0) {
+      throw new Error("WASM analysis failed: invalid dimensions or scale capacity");
+    }
 
-  // Copy result string out before freeing
-  const json = mod.UTF8ToString(resultPtr);
-
-  // Free WASM-owned pointers
-  mod._wasm_free(resultPtr);
-  mod._free(ptr);
-
-  return JSON.parse(json) as JsAnalysisResult;
+    return readWasmResult(mod.HEAPF64, _outPtr, scaleCount);
+  } finally {
+    mod._free(pixelPtr);
+  }
 }
